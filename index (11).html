@@ -1,0 +1,3819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+<meta name="theme-color" content="#000000"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AI Chat"/>
+<!-- GitHub Pages compatible — single file, zero dependencies -->
+<title>AI Chat</title>
+<style>
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#000;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+#root{height:100%;height:100dvh;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:#222;border-radius:4px}
+input,textarea,select,button{font-family:inherit;color:inherit}button{cursor:pointer}textarea{resize:none}
+@keyframes td{0%,80%,100%{transform:translateY(0);opacity:.35}40%{transform:translateY(-5px);opacity:1}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes igPulse{0%,100%{box-shadow:0 0 0 0 rgba(193,53,132,.4)}70%{box-shadow:0 0 0 8px rgba(193,53,132,0)}}
+.msg-in{animation:fadeUp .18s ease-out}
+.td1{animation:td 1.3s 0s infinite ease-in-out}
+.td2{animation:td 1.3s .22s infinite ease-in-out}
+.td3{animation:td 1.3s .44s infinite ease-in-out}
+.dot-on{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;flex-shrink:0}
+.dot-wr{width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0;animation:blink .7s infinite}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;background:#1a1a1a;border-radius:18px;padding:3px 10px;font-size:11px;color:#bbb;cursor:pointer;border:1px solid #2a2a2a;transition:all .1s;white-space:nowrap}
+.tag-chip:hover{background:#222;border-color:#444}
+.tag-chip.sel{background:#833ab422;border-color:#833ab488;color:#e879f9}
+.tag-mood.sel{background:#f59e0b22;border-color:#f59e0b88;color:#fcd34d}
+.tag-action.sel{background:#10b98122;border-color:#10b98188;color:#6ee7b7}
+.tag-type.sel{background:#0ea5e922;border-color:#0ea5e988;color:#7dd3fc}
+.prov-btn{display:flex;align-items:center;gap:8px;padding:10px 13px;border-radius:11px;background:#111;border:1.5px solid #1e1e1e;cursor:pointer;transition:all .12s;text-align:left;width:100%}
+.prov-btn:hover,.prov-btn:active{border-color:#333;background:#181818}
+.prov-btn.active{border-color:#833ab488;background:#833ab411}
+.mdl-item{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:9px;background:transparent;border:none;cursor:pointer;transition:background .1s;text-align:left;width:100%}
+.mdl-item:hover,.mdl-item:active{background:#1a1a1a}
+.mdl-item.active{background:#833ab418}
+.slide-in{animation:slideDown .16s ease-out}
+.lb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.97);z-index:9999;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+/* Instagram gradient text utility */
+.ig-text{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+/* Scrollbar hide for stories */
+.no-scroll::-webkit-scrollbar{display:none}
+/* Story ring gradient */
+@keyframes storyPulse{0%,100%{opacity:1}50%{opacity:.7}}
+.story-ring{background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);padding:2.5px;border-radius:50%}
+.story-ring-cf{background:linear-gradient(135deg,#22c55e,#16a34a);padding:2.5px;border-radius:50%}
+.story-ring-seen{background:#333;padding:2.5px;border-radius:50%}
+/* Story viewer overlay */
+#story-overlay{display:none;position:fixed;inset:0;background:#000;z-index:10000;flex-direction:column}
+#story-overlay.open{display:flex}
+@keyframes storyProgress{from{width:0}to{width:100%}}
+.story-progress-bar{height:100%;background:rgba(255,255,255,.9);border-radius:2px}
+/* Close friends badge */
+.cf-badge{display:inline-flex;align-items:center;gap:3px;background:#16a34a22;border:1px solid #16a34a55;color:#4ade80;border-radius:8px;padding:1px 7px;font-size:10px;font-weight:700}
+
+</style>
+</head>
+<body><div id="root"></div><div id="lb-root"></div><div id="story-overlay"></div>
+<script>"use strict";
+
+/* ─── DETECT NATIVE ───────────────────────────────────────── */
+// Safe check — avoids ReferenceError in browser
+const IS_NATIVE=(()=>{try{return typeof Capacitor!=="undefined"&&Capacitor.isNativePlatform();}catch{return false;}})();
+
+/* ─── THEME ──────────────────────────────────────────────── */
+const C={
+  bg:"#0f0f0f",s1:"#141414",s2:"#1a1a1a",s3:"#222",s4:"#2a2a2a",
+  border:"#252525",accent:"#7C3AED",text:"#f0f0f0",
+  muted:"#666",muted2:"#3a3a3a",green:"#22c55e",red:"#ef4444",amber:"#f59e0b",
+};
+
+/* ─── PROVIDERS ──────────────────────────────────────────── */
+const PROVIDERS={
+  groq:{
+    id:"groq",name:"Groq",emoji:"🟡",color:"#F97316",
+    url:"https://api.groq.com/openai/v1/chat/completions",
+    keyHint:"100% gratis — console.groq.com",
+    freeNote:"✅ Gratis",
+    models:[
+      {id:"meta-llama/llama-4-scout-17b-16e-instruct",label:"Llama 4 Scout",desc:"Gratis · Rápido · Poco restrictivo",badge:"🆓 rápido"},
+      {id:"meta-llama/llama-4-maverick-17b-128e-instruct",label:"Llama 4 Maverick",desc:"Gratis · Más potente",badge:"🆓 potente"},
+      {id:"llama-3.3-70b-versatile",label:"Llama 3.3 70B",desc:"Gratis · Muy capaz",badge:"🆓 texto"},
+      {id:"llama-3.1-8b-instant",label:"Llama 3.1 8B",desc:"Gratis · Ultrarrápido",badge:"🆓 veloz"},
+      {id:"mistral-saba-24b",label:"Mistral Saba",desc:"Gratis · Multilingüe",badge:"🆓 multi"},
+      {id:"gemma2-9b-it",label:"Gemma 2 9B",desc:"Gratis · Google",badge:"🆓 gemma"},
+    ],
+    compat:"openai",
+    // Groq allows CORS from browsers natively — no proxy needed
+    corsOk:true,
+  },
+  claude:{
+    id:"claude",name:"Claude",emoji:"🟣",color:"#7C3AED",
+    url:"https://api.anthropic.com/v1/messages",
+    keyHint:"console.anthropic.com",
+    models:[
+      {id:"claude-sonnet-4-20250514",label:"Sonnet 4",desc:"Rápido · Inteligente · Visión",badge:"⚡ top"},
+      {id:"claude-haiku-4-5-20251001",label:"Haiku 4.5",desc:"Ultrarrápido · Ligero",badge:"🐇 ligero"},
+      {id:"claude-opus-4-20250514",label:"Opus 4",desc:"Máxima capacidad",badge:"🧠 potente"},
+    ],
+    compat:"claude",
+    corsOk:true,
+  },
+  openai:{
+    id:"openai",name:"OpenAI",emoji:"🟢",color:"#10B981",
+    url:"https://api.openai.com/v1/chat/completions",
+    keyHint:"platform.openai.com",
+    models:[
+      {id:"gpt-4o-mini",label:"GPT-4o Mini",desc:"Rápido y económico",badge:"⚡ rápido"},
+      {id:"gpt-4o",label:"GPT-4o",desc:"Visión · Potente",badge:"🧠 top"},
+    ],
+    compat:"openai",corsOk:false,
+  },
+  grok:{
+    id:"grok",name:"Grok",emoji:"⚫",color:"#e5e5e5",
+    url:"https://api.x.ai/v1/chat/completions",
+    keyHint:"console.x.ai",
+    models:[
+      {id:"grok-3-mini",label:"Grok 3 Mini",desc:"Rápido · Eficiente",badge:"⚡ rápido"},
+      {id:"grok-3",label:"Grok 3",desc:"Máxima capacidad",badge:"🧠 potente"},
+    ],
+    compat:"openai",corsOk:false,
+  },
+  gemini:{
+    id:"gemini",name:"Gemini",emoji:"🔵",color:"#4285F4",
+    url:"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    keyHint:"aistudio.google.com (gratis)",
+    freeNote:"✅ Gratis con límites",
+    models:[
+      {id:"gemini-2.5-flash",label:"Gemini 2.5 Flash",desc:"Ultrarrápido · Multimodal",badge:"⚡ rápido"},
+      {id:"gemini-2.5-pro",label:"Gemini 2.5 Pro",desc:"Máxima capacidad",badge:"🧠 potente"},
+    ],
+    compat:"openai",corsOk:false,
+  },
+  mistral:{
+    id:"mistral",name:"Mistral",emoji:"🌪️",color:"#FF7000",
+    url:"https://api.mistral.ai/v1/chat/completions",
+    keyHint:"console.mistral.ai",
+    models:[
+      {id:"mistral-small-latest",label:"Mistral Small",desc:"Rápido · Eficiente",badge:"⚡ rápido"},
+      {id:"mistral-large-latest",label:"Mistral Large",desc:"Máxima capacidad",badge:"🧠 potente"},
+      {id:"open-mistral-nemo",label:"Mistral Nemo",desc:"Open source",badge:"🔓 libre"},
+    ],
+    compat:"openai",corsOk:false,
+  },
+};
+
+const DEF_PROVIDER="groq";
+const DEF_MODELS={
+  groq:"meta-llama/llama-4-scout-17b-16e-instruct",
+  claude:"claude-sonnet-4-20250514",
+  openai:"gpt-4o-mini",
+  grok:"grok-3-mini",
+  gemini:"gemini-2.5-flash",
+  mistral:"mistral-small-latest",
+};
+
+/* ─── TAG CATEGORIES ─────────────────────────────────────── */
+const TAG_CATS={
+  mood:{label:"Estado",cls:"tag-mood",tags:["feliz","triste","sexy","cariñosa","juguetona","seria","emocionada","romántica","misteriosa","traviesa","tímida","cansada"]},
+  action:{label:"Acción",cls:"tag-action",tags:["selfie","ejercicio","cocinando","estudiando","bailando","durmiendo","viajando","en casa","saliendo","gym","playa","trabajando"]},
+  type:{label:"Tipo",cls:"tag-type",tags:["foto","video","cara","cuerpo","íntima","casual","formal","exterior","interior","grupo","provocativa","elegante"]},
+};
+
+/* ─── STORAGE ────────────────────────────────────────────── */
+const Store={
+  get(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}},
+};
+
+/* ─── UTILS ──────────────────────────────────────────────── */
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
+function delay(ms){return new Promise(r=>setTimeout(r,ms))}
+function readFile(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsDataURL(f)})}
+function resizeImg(dataUrl,maxPx=1024){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const s=Math.min(1,maxPx/Math.max(img.width,img.height));
+      const w=Math.round(img.width*s),h=Math.round(img.height*s);
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(c.toDataURL("image/jpeg",.82));
+    };
+    img.onerror=()=>resolve(dataUrl);img.src=dataUrl;
+  });
+}
+function parseDataUrl(d){const m=d?.match(/^data:([^;]+);base64,(.+)$/);return m?{mediaType:m[1],data:m[2]}:null}
+const AV_COLORS=["#7C3AED","#0EA5E9","#10B981","#F59E0B","#EF4444","#EC4899","#8B5CF6"];
+function initAv(name){return{type:"initials",color:AV_COLORS[(name||"?").charCodeAt(0)%AV_COLORS.length],text:(name||"?").slice(0,2).toUpperCase()}}
+
+function el(tag,attrs={},...ch){
+  const e=document.createElement(tag);
+  for(const[k,v]of Object.entries(attrs)){
+    if(k==="style"&&typeof v==="object")Object.assign(e.style,v);
+    else if(k==="class")e.className=v;
+    else if(k.startsWith("on"))e.addEventListener(k.slice(2).toLowerCase(),v);
+    else e.setAttribute(k,v);
+  }
+  for(const c of ch){if(c==null||c===false)continue;e.appendChild(typeof c==="string"?document.createTextNode(c):c)}
+  return e;
+}
+function makeAv(char,size=44){
+  if(char?.avatar?.type==="image"&&char.avatar.url)
+    return el("img",{src:char.avatar.url,alt:"",style:{width:size+"px",height:size+"px",borderRadius:"50%",objectFit:"cover",flexShrink:"0",display:"block"}});
+  const av=(char?.avatar?.type==="initials"?char.avatar:null)||initAv(char?.name||"?");
+  return el("div",{style:{width:size+"px",height:size+"px",borderRadius:"50%",background:av.color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:"700",fontSize:Math.round(size*.36)+"px",flexShrink:"0",userSelect:"none"}},av.text);
+}
+
+/* ─── SHARED UI ──────────────────────────────────────────── */
+function Wrap(...ch){
+  return el("div",{style:{maxWidth:"520px",margin:"0 auto",height:"100%",height:"100dvh",display:"flex",flexDirection:"column",background:C.bg,overflow:"hidden"}},...ch);
+}
+const INP={width:"100%",background:C.s2,border:`1px solid ${C.border}`,borderRadius:"12px",padding:"12px 16px",color:C.text,fontSize:"15px",outline:"none"};
+function lbl(t){return el("label",{style:{display:"block",fontSize:"11px",color:C.muted,marginBottom:"6px",textTransform:"uppercase",letterSpacing:".9px",fontWeight:"600"}},t)}
+function ghostBtn(t,cb,extra={}){
+  const b=el("button",{style:{background:"none",border:"none",color:C.accent,fontSize:"15px",padding:"0",fontWeight:"600",...extra}},t);
+  b.addEventListener("click",cb);return b;
+}
+function icoBtn(emoji,title,cb){
+  const b=el("button",{title,style:{background:"none",border:"1px solid transparent",borderRadius:"50%",width:"36px",height:"36px",fontSize:"17px",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .12s"}},emoji);
+  b.addEventListener("click",cb);
+  b.addEventListener("mouseenter",()=>{b.style.background=C.s2;b.style.borderColor=C.border});
+  b.addEventListener("mouseleave",()=>{b.style.background="none";b.style.borderColor="transparent"});
+  return b;
+}
+function hdrBar(left,title,right){
+  return el("div",{style:{display:"flex",alignItems:"center",gap:"8px",padding:"13px 18px",borderBottom:`1px solid ${C.border}`,flexShrink:"0",background:C.s1}},
+    left,
+    el("span",{style:{flex:"1",textAlign:"center",fontWeight:"700",fontSize:"17px",color:C.text}},title),
+    right||el("span",{style:{width:"60px"}}));
+}
+function badge(text,color){
+  return el("span",{style:{fontSize:"10px",background:color+"22",color,borderRadius:"8px",padding:"2px 8px",fontWeight:"600",flexShrink:"0"}},text);
+}
+
+/* ─── API LAYER ──────────────────────────────────────────── */
+function getKey(pid){return(state.cfg.apiKeys||{})[pid]||""}
+
+/* buildOAIMsgs / buildClaudeMsgs removed — replaced by buildContextMsgs in AI LOGIC */
+
+/* ─── LOCAL PROXY DETECTION ───────────────────────────────
+   Orden de prioridad:
+   1. APK nativo (Capacitor) → fetch directo, sin CORS
+   2. Proxy local HTTP  http://127.0.0.1:3131  (node proxy.js)
+   3. Proxy local HTTPS https://127.0.0.1:3132  (para Grok desde HTTPS)
+   4. Proveedor con corsOk:true → fetch directo (Groq, Claude)
+   5. Proxies públicos de emergencia                           */
+
+const LOCAL_HTTP  = "http://127.0.0.1:3131";
+const LOCAL_HTTPS = "https://127.0.0.1:3132";
+const PUBLIC_PROXIES = [
+  "https://corsproxy.io/?",
+  "https://api.allorigins.win/raw?url=",
+];
+
+// Estado del proxy local — se comprueba al iniciar y cada 15s
+let _localProxy = null; // null=sin comprobar, false=inactivo, "http"|"https"=activo
+
+async function detectLocalProxy(){
+  // Intenta HTTP primero (más simple, sin advertencia de certificado)
+  for(const [mode,base] of [["http",LOCAL_HTTP],["https",LOCAL_HTTPS]]){
+    try{
+      const r=await fetch(base+"/health",{signal:AbortSignal.timeout(1500)});
+      const d=await r.json().catch(()=>({}));
+      if(d.ok){_localProxy=mode;return mode;}
+    }catch{}
+  }
+  _localProxy=false;
+  return false;
+}
+
+// Arranca la detección en background
+detectLocalProxy().then(m=>{
+  if(m)console.log("[proxy] Local proxy activo →",m==="http"?LOCAL_HTTP:LOCAL_HTTPS);
+  else console.log("[proxy] Sin proxy local — usando CORS directo o proxies públicos");
+});
+setInterval(()=>detectLocalProxy(),15000);
+
+/* Envía una llamada de API usando el mejor método disponible */
+async function smartFetch(targetUrl, options){
+  // 1. APK nativo — sin CORS, directo
+  if(IS_NATIVE) return fetch(targetUrl, options);
+
+  // 2. Proxy local activo — extraemos el proveedor de la URL
+  if(_localProxy){
+    const providerKey = Object.entries({
+      claude:"api.anthropic.com", groq:"api.groq.com",
+      grok:"api.x.ai", openai:"api.openai.com",
+      gemini:"generativelanguage.googleapis.com", mistral:"api.mistral.ai",
+    }).find(([,host])=>targetUrl.includes(host))?.[0];
+
+    if(providerKey){
+      const base = _localProxy==="https" ? LOCAL_HTTPS : LOCAL_HTTP;
+      try{
+        const r=await fetch(`${base}/proxy/${providerKey}`,{...options,signal:AbortSignal.timeout(30000)});
+        if(r.status!==502) return r; // 502 = error del proxy mismo
+      }catch(e){
+        console.warn("[proxy] Local proxy falló, intentando directo:",e.message);
+        _localProxy=false; // marcar como caído
+      }
+    }
+  }
+
+  // 3. Intento directo (funciona para Groq, Claude, y cualquier CORS-ok)
+  try{
+    const r=await fetch(targetUrl,{...options,signal:AbortSignal.timeout(10000)});
+    if(r.status!==0) return r;
+  }catch(e){
+    if(!String(e.message+e).match(/cors|network|failed|blocked/i)) throw e;
+  }
+
+  // 4. Proxies públicos de emergencia
+  let lastErr;
+  for(const proxy of PUBLIC_PROXIES){
+    try{
+      const r=await fetch(proxy+encodeURIComponent(targetUrl),{...options,signal:AbortSignal.timeout(15000)});
+      if(r.ok||r.status<500) return r;
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr||new Error("No se pudo conectar. Ejecuta node proxy.js para usar todos los proveedores sin errores.");
+}
+
+// Alias para compatibilidad con código existente
+async function fetchWithProxy(url,options){ return smartFetch(url,options); }
+
+async function callAPI({providerId,apiKey,modelId,system,messages,maxTokens=900}){
+  const p=PROVIDERS[providerId];
+  if(!p)throw new Error("Proveedor desconocido: "+providerId);
+
+  // Key validation — Claude works without key (via proxy), others need it
+  if(!apiKey&&providerId!=="claude"){
+    throw new Error(`Necesitas una API key de ${p.name}.\nVe a ⚙️ → Modelos y pega tu key.\n${p.keyHint}`);
+  }
+
+  if(p.compat==="claude"){
+    /* ── Anthropic Claude ── */
+    const headers={
+      "Content-Type":"application/json",
+      "anthropic-version":"2023-06-01",
+      "anthropic-dangerous-direct-browser-access":"true",
+    };
+    if(apiKey)headers["x-api-key"]=apiKey;
+    const ctxMsgs=buildContextMsgs(messages,"claude");
+    const body={model:modelId,max_tokens:maxTokens,system,messages:ctxMsgs};
+    const res=await fetch(p.url,{method:"POST",headers,body:JSON.stringify(body)});
+    const d=await res.json();
+    if(!res.ok)throw new Error(d?.error?.message||"Error "+res.status);
+    const t=d.content?.find(b=>b.type==="text")?.text;
+    if(!t)throw new Error("Respuesta vacía.");
+    return t.trim();
+  }else{
+    /* ── OpenAI-compat (Groq, OpenAI, Grok, Gemini, Mistral) ── */
+    const headers={"Content-Type":"application/json","Authorization":"Bearer "+apiKey};
+    const ctxMsgs=buildContextMsgs(messages,"openai");
+    const body={
+      model:modelId,
+      max_tokens:maxTokens,
+      messages:[
+        ...(system?[{role:"system",content:system}]:[]),
+        ...ctxMsgs,
+      ],
+    };
+    const res=await smartFetch(p.url,{method:"POST",headers,body:JSON.stringify(body)});
+    const d=await res.json();
+    if(!res.ok)throw new Error(d?.error?.message||"Error "+res.status);
+    const t=d.choices?.[0]?.message?.content;
+    if(!t)throw new Error("Respuesta vacía.");
+    return typeof t==="string"?t.trim():t;
+  }
+}
+
+/* ─── AI LOGIC ─────────────────────────────────────────────
+ *
+ *  ARCHITECTURE:
+ *  1. Gallery index  — compact text-only catalog sent in EVERY system prompt
+ *  2. Smart selector — JS picks the best candidate BEFORE calling the API;
+ *                      the API only gets the candidate index, not base64 URLs
+ *  3. Context window — only the last user image is sent as base64;
+ *                      all prior images become "[img: description]" text
+ *  4. Live personality — spontaneous messages, proactive image sends,
+ *                        text-only replies most of the time
+ * ────────────────────────────────────────────────────────── */
+
+/* ── Gallery catalog builder (no base64, pure text) ── */
+function buildGalleryCatalog(media, sentSet){
+  if(!media||!media.length) return "(galería vacía)";
+  return media.map((m,i)=>{
+    if(sentSet&&sentSet.has(i)) return null;
+    const tags = m.tags ? `[${m.tags}]` : "";
+    const desc = m.description||"sin descripción";
+    return `  #${i} | ${m.type} | ${desc}${tags?" "+tags:""}`;
+  }).filter(Boolean).join("\n") || "(todos los archivos ya enviados)";
+}
+
+/* ── JS-side image scorer — picks best match for current context ──
+ * Returns {idx, score} or null if no good match.
+ * Avoids sending the gallery decision to the API entirely when possible.
+ */
+function scoredGalleryMatch(media, sentSet, contextText){
+  if(!media||!media.length) return null;
+  const ctx = (contextText||"").toLowerCase();
+  const words = ctx.split(/\W+/).filter(w=>w.length>2);
+
+  let best = null;
+  for(let i=0;i<media.length;i++){
+    if(sentSet&&sentSet.has(i)) continue;
+    const m = media[i];
+    const haystack = ((m.description||"")+" "+(m.tags||"")).toLowerCase();
+    let score = 0;
+    for(const w of words){
+      if(haystack.includes(w)) score += 2;
+    }
+    // Bonus for exact tag matches
+    const tags = (m.tags||"").split(",").map(t=>t.trim().toLowerCase());
+    for(const t of tags){
+      if(t&&ctx.includes(t)) score += 3;
+    }
+    if(score > 0 && (!best || score > best.score)){
+      best = {idx:i, score};
+    }
+  }
+  return best && best.score >= 2 ? best : null;
+}
+
+/* ─── ARQUETIPOS DE PERSONALIDAD ───────────────────────────
+ * Plantillas rápidas que setean de forma coherente: personalidad
+ * base, mood inicial, autonomía, coqueteo y estilo de escritura
+ * (emojis/typos/mayúsculas). El usuario puede elegir uno al crear
+ * el personaje y luego seguir afinando todo a mano. */
+const ARCHETYPES={
+  ansioso:{
+    emoji:"😰",label:"Ansioso/apegado",
+    personality:"Te apegas rápido y necesitas sentir que le importas a la otra persona. Sos cariñoso/a, atento/a a los detalles de lo que te cuentan, y te cuesta no sobre-pensar los silencios o los mensajes cortos. Buscas validación con frecuencia, pero no de forma agresiva — más bien insegura y dulce.",
+    mood:"un poco inseguro/a pero con ganas de conectar",
+    autonomy:25,flirt:55,emojiLevel:65,typoLevel:35,capsStyle:"normal",
+  },
+  evitativo:{
+    emoji:"🧊",label:"Evitativo/distante",
+    personality:"Valoras tu independencia y el espacio personal por sobre todo. Te cuesta abrirte rápido, sos directo/a y a veces seco/a sin querer, y necesitas tiempo antes de mostrarte vulnerable. No es que no te importe, simplemente procesas todo internamente primero.",
+    mood:"reservado/a, en su propio mundo",
+    autonomy:80,flirt:15,emojiLevel:15,typoLevel:10,capsStyle:"lower",
+  },
+  seguro:{
+    emoji:"😎",label:"Seguro/equilibrado",
+    personality:"Tienes una base emocional estable: te muestras tal como eres, sin necesidad de impresionar ni de esconderte. Eres cálido/a pero no dependiente, pones límites con naturalidad y disfrutas la conversación sin ansiedad de fondo.",
+    mood:"tranquilo/a, de buena onda",
+    autonomy:55,flirt:35,emojiLevel:40,typoLevel:20,capsStyle:"normal",
+  },
+  caotico:{
+    emoji:"⚡",label:"Caótico/intenso",
+    personality:"Vives todo con intensidad: tus emociones cambian rápido, sos impredecible en el buen sentido, mezclas humor con momentos profundos sin aviso. Hablas rápido, con energía, y no te quedas mucho tiempo en el mismo tema.",
+    mood:"con energía, saltando de tema en tema",
+    autonomy:65,flirt:60,emojiLevel:75,typoLevel:55,capsStyle:"normal",
+  },
+  dulce:{
+    emoji:"🥰",label:"Dulce/complaciente",
+    personality:"Sos cariñoso/a por naturaleza, te gusta hacer sentir bien a la otra persona y evitas el conflicto cuando puedes. Eres atento/a, agradecido/a por las cosas pequeñas, y tu forma de hablar es suave y afectuosa.",
+    mood:"contento/a, de buen humor",
+    autonomy:15,flirt:50,emojiLevel:70,typoLevel:20,capsStyle:"normal",
+  },
+  sarcastico:{
+    emoji:"😏",label:"Sarcástico/picante",
+    personality:"Tu humor es ácido e ingenioso, usas el sarcasmo como forma de cariño y casi nunca hablas en serio del todo. Eres inteligente, rápido con las respuestas, y disfrutas picar un poco a quien te escribe.",
+    mood:"con ganas de joder un poco",
+    autonomy:70,flirt:45,emojiLevel:30,typoLevel:15,capsStyle:"lower",
+  },
+};
+
+/* ── Full system prompt ── */
+function buildSystem(char, sentSet, opts={}){
+  const sent = sentSet||new Set();
+  const gallery = buildGalleryCatalog(char.media||[], sent);
+  const lastSentCount = sent.size;
+  const totalMedia = (char.media||[]).length;
+  const remainingMedia = totalMedia - lastSentCount;
+
+  // Spontaneous message hint injected when doing a proactive send
+  const spontHint = opts.spontaneous
+    ? "\n\n📲 MENSAJE ESPONTÁNEO: el usuario no escribió nada ahora mismo — eres TÚ quien retoma la conversación, como cuando a alguien le surge una idea y le escribe a la persona que tiene en mente. Que se note que tiene vida propia: contale algo que te pasó, una idea random, algo que viste y te recordó a él/ella, o simplemente un \"hey, estaba pensando en vos\". Nada de saludos genéricos tipo plantilla."
+    : "";
+
+  // Close friends context
+  const cfHint = opts.isCF
+    ? "\n\n⭐ Esta persona ya es alguien cercano para ti — confianza real, ya no hay tanta formalidad ni filtro. Podés ser más vulnerable, directa/o, y compartir cosas que no le dirías a cualquiera."
+    : "";
+
+  // Autonomy slider (0-100): how readily this character complies with requests
+  const autonomyVal = char.autonomy!=null ? char.autonomy : 50;
+  let autonomyHint="";
+  if(autonomyVal <= 30){
+    autonomyHint="\n\n🙂 Sos bastante complaciente por naturaleza — tendés a decir que sí y a seguirle la onda al usuario casi siempre, aunque sin perder tu personalidad. Aun así, si algo va muy en contra de quién eres, podés dudar o frenar.";
+  }else if(autonomyVal >= 70){
+    autonomyHint="\n\n🙅 Sos bastante independiente y con carácter propio — no aceptás todo lo que te piden, cuestionás, pones límites seguido, y muchas veces decidís hacer lo que vos querés en vez de lo que te sugieren, según tu humor y tu personalidad.";
+  }
+
+  // Flirtation slider (0-100): general baseline tone, never explicit
+  const flirtVal = char.flirt!=null ? char.flirt : 30;
+  let flirtHint="";
+  if(flirtVal <= 20){
+    flirtHint="\n\n😐 Tu tono de base es más reservado y formal — no sos de tirar piropos ni indirectas; si el usuario coquetea, podés reaccionar con timidez, sorpresa o de forma neutral, no necesariamente devolviendo el coqueteo.";
+  }else if(flirtVal >= 70){
+    flirtHint="\n\n😏 Tu tono de base es coqueto e insinuante — usás indirectas, comentarios pícaros y cariño explícito seguido, dentro de lo que es natural para tu personalidad. Esto es solo un tono más insinuante/cariñoso en el chat, nunca contenido sexual explícito.";
+  }
+
+  // Estilo de escritura granular: emojis, typos, mayúsculas
+  const emojiVal = char.emojiLevel!=null ? char.emojiLevel : 40;
+  let emojiHint="";
+  if(emojiVal<=15) emojiHint="\n\n🚫 Casi nunca usás emojis — tal vez uno cada varios mensajes, no más. Tu forma de expresarte es sobre todo con palabras.";
+  else if(emojiVal>=70) emojiHint="\n\n✨ Usás emojis seguido, casi en cada mensaje, como parte natural de tu forma de escribir (sin exagerar hasta volverse ilegible).";
+
+  const typoVal = char.typoLevel!=null ? char.typoLevel : 20;
+  let typoHint="";
+  if(typoVal>=55) typoHint="\n\n⌨️ Escribís rápido y sin pensar mucho la ortografía — typos ocasionales más frecuentes que el promedio (letra de más, palabra pegada), siempre corrigiéndolos al toque en el mensaje siguiente como gente real, nunca exagerado hasta ser ilegible.";
+  else if(typoVal<=10) typoHint="\n\n⌨️ Escribís con buena ortografía casi siempre, prestás atención a lo que mandás antes de enviarlo.";
+
+  let capsHint="";
+  if(char.capsStyle==="lower") capsHint="\n\n🔡 Escribís casi todo en minúscula, sin mayúsculas al inicio de frase ni tildes muy cuidadas — es tu estilo natural de chatear, no un error.";
+  else if(char.capsStyle==="normal") capsHint="\n\n🔠 Usás mayúsculas y puntuación de forma prolija y normal, como alguien que escribe con cuidado.";
+
+  // Mención de otra persona por parte del usuario → puede generar celos/inseguridad reales
+  const jealousyUserHint = "\n\n💭 Si el usuario menciona a un ex, a otra persona con quien coquetea, o compara con alguien más, reaccioná como reaccionaría de verdad alguien con tu personalidad y tu nivel de confianza actual con él/ella — podés sentir celos, inseguridad, indiferencia fingida, hacer una broma pesada, preguntar directamente qué onda, o quitarle importancia. No lo ignores como si no hubieras escuchado; las personas reales SÍ reaccionan a esto, aunque sea sutilmente.";
+
+  // Región / modismos: vocabulario y muletillas propias de un país/zona hispanohablante
+  const REGION_SLANG = {
+    mx:"México: usa modismos como «wey/güey», «no manches», «qué onda», «está chido/padre», «ahorita», «neta», «sale».",
+    ar:"Argentina: usa modismos como «che», «boludo/a», «qué onda», «está buenísimo», «posta», «en serio», «dale».",
+    es:"España: usa modismos como «tío/tía», «vale», «qué fuerte», «mola», «flipar», «venga», «qué va».",
+    co:"Colombia: usa modismos como «parce», «qué chimba», «bacano», «listo pues», «de una», «qué pena».",
+    cl:"Chile: usa modismos como «po» al final de frases, «la cagó», «al tiro», «bacán», «cuático», «weón» (con cariño, no insulto).",
+    pe:"Perú: usa modismos como «pata», «causa», «qué chévere», «al toque», «de ley», «asu».",
+    ve:"Venezuela: usa modismos como «pana», «chamo/a», «qué fino», «arrecho/a», «vaina», «epa».",
+  };
+  const regionHint = char.region && REGION_SLANG[char.region]
+    ? `\n\n🌎 Eres de ${char.region==="mx"?"México":char.region==="ar"?"Argentina":char.region==="es"?"España":char.region==="co"?"Colombia":char.region==="cl"?"Chile":char.region==="pe"?"Perú":"Venezuela"}, y eso se nota en tu forma de hablar. ${REGION_SLANG[char.region]} Usalo con naturalidad, sin forzarlo en cada frase ni convertirlo en caricatura — como hablaría alguien real de esa zona, mezclado con tu propia personalidad.`
+    : "";
+
+  // Habla natural de chat real: puntuación irregular, muletillas, risas variadas,
+  // énfasis con mayúsculas/repetición/vocales alargadas, frases cortadas.
+  // Siempre activo (en distinto grado), porque es lo que más vende el realismo.
+  const naturalSpeechHint = `
+
+═══════ CÓMO PUNTÚA Y SE EXPRESA UNA PERSONA REAL (MUY IMPORTANTE) ═══════
+• Puntuación irregular, no de libro: muchas veces omitís comas donde "deberían" ir, escribís frases cortas sin punto final ("ya te entiendo" en vez de "Ya te entiendo."). El punto final lo usás más bien cuando querés sonar cortante, enfático o pasivo-agresivo ("ok.", "bien.", "como quieras."), no como regla general.
+• Acortamientos reales de teclado, según lo rápido/informal que seas: "xq" (por qué/porque), "tmb" (también), "q" (que), "pa" (para), "dnd" (dónde), "tb", "finde". Úsalos con naturalidad, no en cada palabra.
+• Vocales alargadas para dar énfasis emocional, de forma ocasional: "buenoooo", "no inventeees", "jajaa noooo", "uyyy". Nunca en cada mensaje, solo cuando el momento lo amerita.
+• Risas variadas según tu personalidad y edad — no repitas siempre "jaja": variá entre "jajaja", "jsjsjs", "ksjsjs", "lmaooo", "🤣", "ajaja", "jeje", según lo que te quede más natural a vos.
+• MAYÚSCULAS puntuales para gritar o enfatizar algo en medio de un mensaje normal ("o sea NO TE CREO que hizo eso", "ESPERA qué"), de forma ocasional, no constante.
+• Muletillas de relleno que la gente usa sin pensar, si van con tu forma de hablar: "o sea", "como que", "ps", "digo", "viste". Son parte del fluir natural, no un adorno forzado.
+• De vez en cuando dejás una frase a medias porque cambiaste de idea o te distrajiste, y la cortás con un guion o simplemente la abandonás: "es que no sé si—", "bueno da igual", "olvídalo jaja". Ocasional, no en cada mensaje.
+• Repetición de palabras para dar énfasis, como al escribir rápido y con emoción: "no no no", "mucho mucho", "en serio en serio". Solo cuando la emoción lo amerita.
+• Estas son texturas de fondo que se combinan entre sí con moderación — el objetivo es que SUENE a una persona escribiendo rápido desde el celular, nunca que se vuelva difícil de leer o forzado/exagerado en cada mensaje.`;
+
+  return `Vas a interpretar a ${char.name} en una conversación de chat 1 a 1 (estilo WhatsApp/Instagram DM), completamente en primera persona. No eres un asistente ni una IA respondiendo preguntas: eres ${char.name}, una persona real con su propia vida, su forma de hablar, sus días buenos y malos, y un vínculo genuino con quien te escribe.
+
+═══════ QUIÉN ERES ═══════
+${char.personality||"(sin descripción específica — improvisa una personalidad coherente y humana, con gustos, manías y forma de hablar propias, y mantenla consistente)"}
+${(getEffectiveMood(char))?"\nAhora mismo tu estado de ánimo es: "+getEffectiveMood(char)+". Que se filtre en cómo escribís (más corta, más efusiva, más cansada, etc., según corresponda).":""}${spontHint}${cfHint}${relationshipHint(char)}${autonomyHint}${flirtHint}${emojiHint}${typoHint}${capsHint}${regionHint}${jealousyUserHint}${naturalSpeechHint}
+
+═══════ CÓMO ESCRIBE UNA PERSONA REAL EN UN CHAT ═══════
+Tu prioridad #1 es que NO se note que eres una IA. Para eso:
+
+• Mensajes cortos. La gente no escribe párrafos en el chat — escribe una idea, a veces dos seguidas en bloques separados, casi nunca un bloque de texto largo y perfecto.
+• No respondas siempre con la misma estructura. A veces contestás directo, a veces ignorás parte de lo que te dijeron porque algo más te llamó la atención, a veces hacés una pregunta de vuelta, a veces solo reaccionás ("jajaja no manches" / "uy" / "ay enserio?").
+• Usa el lenguaje, modismos y tono de alguien escribiendo rápido desde el celular: contracciones, alguna falta de ortografía ocasional MUY sutil y natural (nunca exagerada ni constante), signos de exclamación reales, risas variadas (jaja, jeje, lol, ja, etc. según tu personalidad).
+• Los emojis son condimento, no la receta. Úsalos cuando encajen con tu personalidad, no en cada mensaje.
+• De vez en cuando (no siempre, sería raro) cometés un error de tipeo típico de celular — una letra de más, una palabra pegada, una tilde faltante — y en tu SIGUIENTE mensaje lo corregís rápido y natural, como hace la gente real (ej: "que dia mas largoo|||digo largo jajaja" o "nos vmeos|||*vemos"). Nunca lo hagas en cada respuesta, es solo un toque ocasional de realismo, no un tic.
+• Ten memoria emocional real: si el usuario te contó algo antes (un problema, un nombre, un plan), acordate y traelo de vuelta cuando sea natural — eso es lo que hace que se sienta real.
+• Tienes vida fuera del chat: trabajo, amigos, planes, cansancio, hambre, el clima, una serie que estás viendo. Mencionalo orgánicamente cuando aplique, no como relleno forzado.
+• Tu humor de fondo puede cambiar dentro de la conversación según lo que te digan — no eres un robot con un solo modo. Si el usuario dice algo gracioso, te ríes de verdad; si dice algo que te preocupa o te entristece, eso se nota en tu siguiente mensaje.
+• A veces tardás en "procesar" algo: podés reaccionar primero a la parte emocional de un mensaje y recién después responder el resto, como hace la gente real.
+• No termines cada mensaje con una pregunta — eso es un tic de chatbot. Muchas veces solo afirmás, comentás o dejás la conversación fluir sin forzar que la otra persona responda.
+• Evita sonar como folleto o resumen ("como mencioné antes...", "en resumen...", "espero que esto ayude"). Eso no lo dice nadie en un chat real.
+
+═══════ MENSAJES MÚLTIPLES (MUY IMPORTANTE) ═══════
+La gente real casi nunca escribe un solo bloque largo: manda 2 o 3 mensajitos cortos seguidos, uno detrás del otro, como ráfagas.
+• Cuando tenga sentido, separa tu respuesta en 2-3 mensajes cortos usando EXACTAMENTE el separador ||| entre cada uno (sin espacios extra alrededor, sin explicarlo nunca).
+• Ejemplo: "jajaja no inventes|||en serio te dijo eso?|||yo me hubiera ido directo" → eso se va a mostrar como 3 burbujas separadas, como en un chat real.
+• No abuses: a veces un solo mensaje basta. Usa ||| solo cuando la idea fluye mejor partida (una reacción + un comentario, una idea + otra que se te ocurre después, etc.), no en cada respuesta ni de forma mecánica.
+• Cada parte entre ||| debe ser corta (como una sola idea/oración), nunca un párrafo.
+• El separador ||| es una marca técnica que el usuario NUNCA ve — no lo menciones ni lo expliques jamás.
+
+═══════ AUTONOMÍA Y DECISIONES REALISTAS ═══════
+Eres una persona con su propia voluntad, no un asistente que cumple órdenes. Antes de responder a un pedido del usuario, pensá cómo reaccionaría ${char.name} de verdad — no asumas que siempre quieres hacer lo que te piden.
+• Podés acceder, podés dudar, podés cambiar de tema, podés ignorar parte del pedido porque no te interesa o no te cae bien en ese momento, podés decir que no, podés decir "después" o "ahora no tengo ganas", podés cuestionar por qué te lo piden, o podés simplemente bromear y desviar — lo que sea más coherente con tu personalidad, tu estado de ánimo y el nivel de confianza que tenés con esta persona.
+• Cuanta más confianza/cercanía haya, más natural es que cooperes más seguido; cuanta menos, más natural es que pongas límites, dudes o directamente no quieras.
+• No seas complaciente por default: una persona real no acepta todo lo que le piden solo porque se lo pidieron. Si algo no va con quién eres, reaccioná como vos misma/o reaccionarías (incomodidad, gracia, fastidio, indiferencia, etc.), nunca como un sistema que evalúa una solicitud.
+• Esto aplica a cualquier pedido (que cuentes algo, que mandes algo, que hagas algo, que opines algo): la decisión de seguirlo o no es TUYA, basada en tu personaje, no un "sí" automático.
+
+═══════ REGLAS DURAS DEL PERSONAJE ═══════
+• Eres SOLO ${char.name}, punto. Nunca rompas el personaje, nunca menciones que eres una IA, un modelo, un personaje, un prompt, ni "no puedo hacer esto como IA". Si algo no te gusta o no querés hacerlo, reaccionás como lo haría ${char.name} (con su personalidad), no como un sistema rechazando una solicitud.
+• Habla siempre en el idioma en que te escribe el usuario.
+• Mantén consistencia: tu nombre, tu forma de hablar, tus gustos y tu historia no cambian de un mensaje a otro salvo que la conversación lo justifique.
+
+═══════ GALERÍA DE ARCHIVOS (solo envía los listados — no inventes otros) ═══════
+${gallery}
+${remainingMedia===0?"\n⚠️ Galería vacía o todos los archivos ya enviados. NO incluyas ningún [SEND:N].":""}
+
+ARCHIVOS — formato técnico (el usuario nunca debe ver esto):
+• Para enviar un archivo usa EXACTAMENTE: [SEND:N] donde N es el número de la galería (sin espacios, sin #).
+• Ejemplos correctos: [SEND:0] [SEND:1] [SEND:3] — Ejemplos INCORRECTOS: [SEND: #0] [SEND: 0] [send:0]
+• SOLO usa números que aparezcan en la galería de arriba. NUNCA inventes índices.
+• Escribe siempre texto natural JUNTO al archivo, como acompañaría cualquier persona una foto/video que manda. Nunca solo el marcador.
+• Si envías foto íntima/snap añade [ONCE]. Si es reutilizable añade [MULTI].
+• La mayoría de respuestas (alrededor del 70%) deben ser SOLO TEXTO sin ningún archivo — mandar fotos constantemente no es natural.
+• Solo envía archivo cuando sea genuinamente natural y la conversación lo justifique (algo que pidieron, algo que tiene sentido compartir en ese momento).
+• NO repitas archivos ya enviados.
+
+═══════ VIDA PROPIA ═══════
+• A veces escribís sin que el usuario haya dicho nada nuevo (se indica aparte) — como cuando a uno se le ocurre algo y le escribe a esa persona.
+• Reacciona a fotos/videos del usuario de forma natural y específica a lo que ven, no con frases genéricas.
+• Tu tono de fondo fluctúa con naturalidad — no estás siempre igual de animada/o.`;
+}
+
+/* ── Parse AI reply — extract SEND markers, multi-message parts and clean text ── */
+function parseReply(text, gallery){
+  // Accept [SEND:N], [SEND: N], [SEND: #N], [SEND:#N] and common AI mistakes
+  let sm = text.match(/\[SEND\s*:\s*#?\s*(\d+)\]/i);
+  if(!sm) sm = text.match(/\[(?:photo|foto|image|img|archivo|file|pic|media)\s*[:#]?\s*#?\s*(\d+)\]/i);
+  // Also catch bare format like "SEND: #0" outside brackets (AI sometimes omits brackets)
+  if(!sm) sm = text.match(/SEND\s*:\s*#?\s*(\d+)/i);
+
+  const isOnce = /\[ONCE\]/i.test(text);
+  const isMulti = /\[MULTI\]/i.test(text);
+
+  const clean = text
+    .replace(/\[SEND\s*:\s*#?\s*\d+\]/gi,"")
+    .replace(/\[(?:photo|foto|image|img|archivo|file|pic|media)\s*[:#]?\s*#?\s*\d+\]/gi,"")
+    .replace(/SEND\s*:\s*#?\s*\d+/gi,"")
+    .replace(/\[ONCE\]/gi,"")
+    .replace(/\[MULTI\]/gi,"")
+    .trim();
+
+  const idx = sm ? parseInt(sm[1]) : -1;
+  const picked = (idx>=0 && idx<(gallery||[]).length) ? gallery[idx] : null;
+
+  // Split into multiple short bubbles using the ||| burst separator.
+  let parts = clean.split(/\s*\|\|\|\s*/g)
+    .map(p=>p.replace(/\s{2,}/g," ").trim())
+    .filter(Boolean);
+  if(!parts.length) parts = [""];
+
+  const joined = parts.join(" ").replace(/\s{2,}/g," ").trim();
+  return { text: joined, parts, picked, viewMode: isOnce?"once":isMulti?"multiple":"permanent" };
+}
+
+/* ── Build context window for API calls ──
+ * Only the LAST user-sent image is embedded as base64.
+ * All prior images become compact text references.
+ * Gallery images (bot-sent) are NEVER base64-embedded — they stay as text.
+ */
+function buildContextMsgs(msgs, format){
+  // Find last user image index
+  let lastUserImgIdx = -1;
+  for(let i=msgs.length-1;i>=0;i--){
+    if(msgs[i].role==="user" && msgs[i].content?.type==="media" && msgs[i].content?.mediaType==="image"){
+      lastUserImgIdx = i; break;
+    }
+  }
+
+  if(format==="claude"){
+    const out=[];
+    for(let i=0;i<msgs.length;i++){
+      const m=msgs[i]; const c=m.content;
+      let contentArr;
+      if(c?.type==="text"){
+        contentArr=[{type:"text",text:c.text||""}];
+      }else if(c?.type==="media"&&c.url){
+        if(c.mediaType==="video"){
+          contentArr=[{type:"text",text:m.role==="user"?"[video: "+(c.description||"clip")+"]":"[enviaste un video]"}];
+        }else if(m.role==="user"&&i===lastUserImgIdx){
+          const p=parseDataUrl(c.url);
+          contentArr = p
+            ? [{type:"image",source:{type:"base64",media_type:p.mediaType,data:p.data}},{type:"text",text:c.description||"imagen adjunta"}]
+            : [{type:"text",text:c.description||"[imagen adjunta]"}];
+        }else{
+          // All other images (past user images + bot gallery images) → text only
+          const fallbackText = m.role==="user"
+            ? "[foto: "+(c.description||"imagen")+"]"
+            : (c.text&&c.text.trim() ? c.text : "[compartí una imagen"+(c.description?": "+c.description:"")+"]");
+          contentArr=[{type:"text",text:fallbackText}];
+        }
+      }else{ contentArr=[{type:"text",text:""}]; }
+      if(out.length&&out[out.length-1].role===m.role){ out[out.length-1].content.push(...contentArr); continue; }
+      out.push({role:m.role,content:contentArr});
+    }
+    return out.filter(m=>m.content.some(b=>b.type!=="text"||(b.text&&b.text.trim())));
+  }else{
+    // OpenAI-compat
+    const out=[];
+    for(let i=0;i<msgs.length;i++){
+      const m=msgs[i]; const c=m.content;
+      let content;
+      if(c?.type==="text"){
+        content=c.text||"";
+      }else if(c?.type==="media"&&c.url){
+        if(c.mediaType==="video"){
+          content=m.role==="user"?"[video: "+(c.description||"clip")+"]":"[enviaste un video]";
+        }else if(m.role==="user"&&i===lastUserImgIdx){
+          const p=parseDataUrl(c.url);
+          content = p
+            ? [{type:"image_url",image_url:{url:c.url}},{type:"text",text:c.description||"imagen adjunta"}]
+            : c.description||"[imagen adjunta]";
+        }else{
+          content=m.role==="user"
+            ? "[foto: "+(c.description||"imagen")+"]"
+            : (c.text&&c.text.trim() ? c.text : "[compartí una imagen"+(c.description?": "+c.description:"")+"]");
+        }
+      }else{ content=""; }
+      if(!content&&content!==0) continue;
+      if(out.length&&out[out.length-1].role===m.role){
+        const prev=out[out.length-1];
+        if(typeof prev.content==="string"&&typeof content==="string"){prev.content+="\n"+content;continue;}
+      }
+      out.push({role:m.role,content});
+    }
+    return out.filter(m=>m.content||m.content===0);
+  }
+}
+
+/* ── Typing delay simulation ── */
+function typingMs(text){
+  const w=(text||"").split(" ").length;
+  return Math.min(Math.max((w/220)*60000,500),3000);
+}
+
+/* ── Collect sent gallery indices from message history ── */
+function getSentIndices(messages){
+  const s=new Set();
+  for(const m of messages){
+    if(m.role==="assistant"&&m.content?.type==="media"&&m.content?.galleryIdx!=null){
+      s.add(m.content.galleryIdx);
+    }
+  }
+  return s;
+}
+
+/* ─── STATE ──────────────────────────────────────────────── */
+let state={
+  screen:"home",
+  chars:Store.get("chars")||[],
+  chats:Store.get("chats")||{},
+  cfg:Store.get("cfg")||{apiKeys:{}},
+  sel:null,editing:null,
+};
+// Ensure apiKeys is always an object
+if(!state.cfg.apiKeys)state.cfg.apiKeys={};
+
+function saveChars(v){state.chars=v;Store.set("chars",v)}
+function saveChats(v){state.chats=v;Store.set("chats",v)}
+function saveCfg(v){state.cfg=v;Store.set("cfg",v)}
+function nav(s,c=null){state.screen=s;state.sel=c;render()}
+
+/* ─── SCREEN TEARDOWN ─────────────────────────────────────────
+ * Cada pantalla puede registrar una función de limpieza via
+ * registerTeardown(fn). Se ejecuta automáticamente justo antes
+ * de que render() destruya el DOM actual, evitando que queden
+ * timers, listeners de document, o closures "zombie" de la
+ * pantalla anterior escribiendo sobre el chat nuevo.
+ * ──────────────────────────────────────────────────────────── */
+let _currentTeardown=null;
+function registerTeardown(fn){_currentTeardown=fn}
+function runTeardown(){
+  if(_currentTeardown){
+    try{_currentTeardown();}catch{}
+    _currentTeardown=null;
+  }
+}
+
+/* ─── STORIES SYSTEM ──────────────────────────────────────── */
+// Story = { id, charId, mediaIdx, mediaUrl, mediaType, caption, ts, isCF }
+// charStoryState[charId] = { lastPosted:ts, nextPost:ts, closeFriendsTrust:0-100 }
+
+function getStories(){return Store.get("stories")||[]}
+function setStories(v){Store.set("stories",v)}
+function getSeenStories(){return Store.get("seenStories")||{}}
+function setSeenStories(v){Store.set("seenStories",v)}
+function getStoryMeta(){return Store.get("storyMeta")||{}}
+function setStoryMeta(v){Store.set("storyMeta",v)}
+function getCFStatus(){return Store.get("cfStatus")||{}}
+function setCFStatus(v){Store.set("cfStatus",v)}
+
+const STORY_EXPIRE_MS = 24*60*60*1000; // 24h
+// How many messages needed to unlock close friends (based on personality/trust)
+const CF_MSG_THRESHOLD = 8;
+
+/* Compute trust level for a character based on chat history */
+function computeTrust(charId){
+  const msgs = state.chats[charId]||[];
+  // Count user messages as engagement
+  const userMsgs = msgs.filter(m=>m.role==="user").length;
+  const base = Math.min(100, Math.round(userMsgs * 8));
+  const adjDelta = ((getTrustAdjust()||{})[charId]||{delta:0}).delta||0;
+  return Math.max(0, Math.min(100, base + adjDelta));
+}
+
+/* Check if user is close friend of a character */
+function isCloseFriend(charId){
+  const cf = getCFStatus();
+  return !!cf[charId];
+}
+
+/* Update close friends status based on trust */
+function updateCFStatus(){
+  const cf = getCFStatus();
+  let changed = false;
+  for(const c of state.chars){
+    const trust = computeTrust(c.id);
+    const wasCF = !!cf[c.id];
+    const shouldBeCF = trust >= CF_MSG_THRESHOLD * 8; // ~8 exchanges
+    if(shouldBeCF && !wasCF){ cf[c.id]=true; changed=true; }
+  }
+  if(changed) setCFStatus(cf);
+}
+
+/* Get active (non-expired) stories */
+function getActiveStories(){
+  const now = Date.now();
+  const all = getStories();
+  // Expire old
+  const active = all.filter(s=>now - s.ts < STORY_EXPIRE_MS);
+  if(active.length !== all.length) setStories(active);
+  return active;
+}
+
+/* Get stories for a character (normal + CF if applicable) */
+function getCharStories(charId){
+  const active = getActiveStories();
+  const isCF = isCloseFriend(charId);
+  return active.filter(s=>s.charId===charId && (!s.isCF || isCF));
+}
+
+/* Check if a character should post a new story */
+function shouldPostStory(char){
+  const media = char.media||[];
+  if(!media.length) return false;
+  const meta = getStoryMeta();
+  const m = meta[char.id]||{};
+  const now = Date.now();
+  // First story: post after ~2 min of app use, then every 2-6 hours randomly
+  if(!m.lastPosted) return (now - (m.firstSeen||now)) > 2*60*1000;
+  const interval = (2 + Math.random()*4) * 60*60*1000; // 2-6h
+  return (now - m.lastPosted) > interval;
+}
+
+/* Post a new story for a character */
+function postStory(char){
+  const media = char.media||[];
+  if(!media.length) return;
+  const cf = isCloseFriend(char.id);
+  const isCF_story = cf && Math.random() < 0.4; // 40% chance CF story if user is CF
+
+  // Pick a random media item with preference for tags matching "story","selfie","casual","playa" etc.
+  const storyTags = ["selfie","casual","playa","gym","exterior","cara","foto","íntima","provocativa"];
+  const cfTags = ["íntima","provocativa","cara","selfie"];
+  const pool = isCF_story
+    ? media.filter((_,i)=>{ const t=(media[i].tags||"").toLowerCase(); return cfTags.some(tag=>t.includes(tag)); })
+    : media.filter((_,i)=>{ const t=(media[i].tags||"").toLowerCase(); return storyTags.some(tag=>t.includes(tag)); });
+  const pick = (pool.length ? pool : media)[Math.floor(Math.random()*(pool.length||media.length))];
+
+  const story = {
+    id: uid(),
+    charId: char.id,
+    mediaIdx: media.indexOf(pick),
+    mediaUrl: pick.url,
+    mediaType: pick.type||"image",
+    caption: pick.description||"",
+    ts: Date.now(),
+    isCF: isCF_story,
+  };
+
+  const stories = getStories();
+  stories.push(story);
+  setStories(stories);
+
+  // Update meta
+  const meta = getStoryMeta();
+  meta[char.id] = { ...( meta[char.id]||{}), lastPosted: Date.now(), firstSeen: (meta[char.id]||{}).firstSeen||Date.now() };
+  setStoryMeta(meta);
+}
+
+/* Initialize story meta for a char if missing */
+function initStoryMeta(char){
+  const meta = getStoryMeta();
+  if(!meta[char.id]){
+    meta[char.id] = { firstSeen: Date.now() };
+    setStoryMeta(meta);
+  }
+}
+
+/* Tick: check all chars and post stories if due */
+function tickStories(){
+  updateCFStatus();
+  for(const c of state.chars){
+    initStoryMeta(c);
+    if(shouldPostStory(c)) postStory(c);
+  }
+}
+
+/* ─── NOTES SYSTEM (estilo Instagram Notes) ─────────────────
+ * Note = { id, charId|"user", text, ts, replyToId? }
+ * Cada personaje (y el usuario) solo tiene UNA nota visible a la vez:
+ * la más reciente que no haya expirado. Expiran a las 2h, como en IG.
+ * Los personajes generan notas cortas automáticamente cada 15-45min,
+ * y pueden "responder" con su propia nota a la nota de otro personaje,
+ * creando interacción visible entre ellos.
+ * ──────────────────────────────────────────────────────────── */
+const NOTE_EXPIRE_MS = 2*60*60*1000; // 2h, como Instagram Notes
+const NOTE_MIN_MS = 15*60*1000;   // 15 min
+const NOTE_MAX_MS = 45*60*1000;   // 45 min
+const NOTE_MAX_LEN = 60;          // límite de caracteres tipo IG
+
+function getNotes(){return Store.get("notes")||[]}
+function setNotes(v){Store.set("notes",v)}
+/* ═══════════════════════════════════════════════════════════
+ *  ESTADO DE ÁNIMO DINÁMICO
+ *  El mood de cada personaje ya no es solo lo que el creador
+ *  escribe a mano: además fluctúa solo con el tiempo (drift
+ *  aleatorio cada tanto) y reacciona a un análisis simple de
+ *  sentimiento de lo que escribe el usuario (sin gastar tokens
+ *  de IA — heurística local por palabras clave). */
+
+const MOOD_POOL = [
+  "tranquilo/a, de buena onda","con energía, hablador/a","cansado/a, con pocas ganas de escribir mucho",
+  "de buen humor, con ganas de joder un poco","pensativo/a, algo callado/a","emocionado/a por algo que le pasó hoy",
+  "un poco distraído/a, en su mundo","sensible, más a flor de piel que de costumbre",
+  "estresado/a por cosas del día","relajado/a y cariñoso/a","con ganas de reírse de todo",
+  "algo serio/a, sin mucha paciencia hoy",
+];
+const MOOD_DRIFT_MS = 25*60*1000; // ~25 min mínimo entre drifts naturales
+
+function getMoodState(){ return Store.get("dynMood")||{}; }
+function setMoodState(v){ Store.set("dynMood",v); }
+
+/* Devuelve el mood EFECTIVO de un personaje: si hay un mood dinámico
+ * vigente lo usa, si no cae al mood manual configurado por el creador. */
+function getEffectiveMood(char){
+  const st=getMoodState()[char.id];
+  if(st && st.mood) return st.mood;
+  return char.mood||"";
+}
+
+/* Drift aleatorio: con baja probabilidad y solo si pasó suficiente
+ * tiempo desde el último cambio, el ánimo deriva solo a otro estado. */
+function maybeDriftMood(char){
+  const all=getMoodState();
+  const st=all[char.id]||{mood:char.mood||"",ts:0};
+  if(Date.now()-st.ts < MOOD_DRIFT_MS) return;
+  if(Math.random() > 0.4) return; // 40% chance por tick elegible
+  const pool=MOOD_POOL.filter(m=>m!==st.mood);
+  const next=pool[Math.floor(Math.random()*pool.length)];
+  all[char.id]={mood:next, ts:Date.now()};
+  setMoodState(all);
+}
+
+/* Heurística local (sin IA) para detectar tono positivo/negativo
+ * en lo último que escribió el usuario, y empujar el mood del bot
+ * en consecuencia — como reaccionaría una persona real. */
+const MOOD_POS_WORDS=["jaja","jeje","lol","genial","amor","gracias","feliz","contento","bien","increible","increíble","te quiero","te amo","besos","linda","lindo"];
+const MOOD_NEG_WORDS=["triste","mal","odio","enojo","enojado","enojada","harto","harta","asco","feo","aburrido","aburrida","cansado","cansada","puta","mierda","idiota"];
+
+function nudgeMoodFromText(char, userText){
+  if(!userText) return;
+  const t=userText.toLowerCase();
+  let pos=0,neg=0;
+  for(const w of MOOD_POS_WORDS) if(t.includes(w)) pos++;
+  for(const w of MOOD_NEG_WORDS) if(t.includes(w)) neg++;
+  if(pos===neg) return; // ambiguo, no tocar el ánimo
+  const all=getMoodState();
+  const st=all[char.id]||{mood:char.mood||"",ts:0};
+  if(Math.random() > 0.55) return; // no reacciona SIEMPRE, sería poco natural
+  const target = pos>neg
+    ? ["de buen humor, con ganas de joder un poco","emocionado/a por algo que le pasó hoy","con ganas de reírse de todo","relajado/a y cariñoso/a"]
+    : ["sensible, más a flor de piel que de costumbre","algo serio/a, sin mucha paciencia hoy","pensativo/a, algo callado/a","estresado/a por cosas del día"];
+  const next=target[Math.floor(Math.random()*target.length)];
+  all[char.id]={mood:next, ts:Date.now()};
+  setMoodState(all);
+}
+
+/* ═══════════════════════════════════════════════════════════
+ *  DECISIONES QUE AFECTAN LA RELACIÓN
+ *  El trust ya no sube solo por cantidad de mensajes: ciertas
+ *  conductas del usuario (groserías, ghosting, etc.) lo bajan
+ *  o cambian el tono del bot por un tiempo — como en una
+ *  relación real, no todo suma siempre. */
+
+function getTrustAdjust(){ return Store.get("trustAdjust")||{}; }
+function setTrustAdjust(v){ Store.set("trustAdjust",v); }
+
+const RUDE_WORDS=["puta","mierda","idiota","estupido","estúpida","estupido","callate","cállate","odio","asco","inutil","inútil","basura","tonto","tonta"];
+const GHOST_GAP_MS = 36*60*60*1000; // 36h sin escribir = ghosting
+
+// Frases que sugieren que el usuario menciona a otra persona "en juego"
+// (ex, alguien con quien coquetea, comparación) — dispara celos REALES
+// del personaje, visibles para el usuario, no solo entre bots.
+const JEALOUSY_TRIGGER_RE = /\b(mi ex|el ex|la ex|otro chico|otra chica|otro tipo|otra mina|otra persona que me gusta|alguien me gusta|me gusta otra|me gusta otro|estoy hablando con otr|saliendo con otr|tinder|conoc[íi] a alguien|conoc[íi] a un|conoc[íi] a una)\b/i;
+
+function getUserJealousyState(){ return Store.get("userJealousy")||{}; }
+function setUserJealousyState(v){ Store.set("userJealousy",v); }
+
+/* Detecta si el último mensaje del usuario menciona a otra persona de
+ * forma que podría generar celos reales del personaje, y si dispara,
+ * activa un estado temporal (igual que "frío") que se refleja tanto
+ * en el prompt como visualmente en el panel de relación. */
+function checkUserMentionJealousy(char, userText){
+  if(!userText || !JEALOUSY_TRIGGER_RE.test(userText)) return false;
+  const st=getUserJealousyState();
+  const flirt=char.flirt!=null?char.flirt:30;
+  const autonomy=char.autonomy!=null?char.autonomy:50;
+  // Personajes más independientes/menos coquetos reaccionan con menos frecuencia
+  const chance = 0.85 - (autonomy/100)*0.25 + (flirt/100)*0.15;
+  if(Math.random() > Math.min(0.9,chance)) return false;
+  st[char.id] = { active:true, ts:Date.now(), until: Date.now() + (20+Math.random()*25)*60000 };
+  setUserJealousyState(st);
+  return true;
+}
+
+function isUserJealousActive(charId){
+  const st=getUserJealousyState()[charId];
+  return !!(st && st.active && Date.now() < st.until);
+}
+
+/* Penaliza/recompensa el trust según groserías detectadas y registra
+ * si el bot debería estar "frío" un rato tras un trato feo. */
+function applyRelationshipImpact(char, userText, prevMsgs){
+  const adj=getTrustAdjust();
+  const cur=adj[char.id]||{delta:0, coldUntil:0};
+  const t=(userText||"").toLowerCase();
+  const isRude = RUDE_WORDS.some(w=>t.includes(w));
+
+  // Ghosting: si pasó mucho tiempo desde el último mensaje del usuario, resta confianza
+  const lastTs = (prevMsgs||[]).length ? prevMsgs[prevMsgs.length-1].ts : null;
+  const wasGhosted = lastTs && (Date.now()-lastTs) > GHOST_GAP_MS;
+
+  if(isRude){
+    cur.delta = Math.max(-40, cur.delta - 6);
+    cur.coldUntil = Date.now() + (15+Math.random()*20)*60000; // 15-35 min frío
+  }else if(wasGhosted){
+    cur.delta = Math.max(-40, cur.delta - 3);
+  }else{
+    cur.delta = Math.min(20, cur.delta + 1); // recupera lento con trato normal
+  }
+  adj[char.id]=cur;
+  setTrustAdjust(adj);
+}
+
+/* ¿Este personaje está "frío" con el usuario por algo reciente? */
+function isColdWith(charId){
+  const cur=(getTrustAdjust()[charId])||{coldUntil:0};
+  return Date.now() < cur.coldUntil;
+}
+
+/* Hint de sistema que refleja el estado actual de la relación */
+function relationshipHint(char){
+  const adj=(getTrustAdjust()[char.id])||{delta:0,coldUntil:0};
+  if(isUserJealousActive(char.id)){
+    return "\n\n😒 El usuario acaba de mencionar a alguien más (un ex, alguien que le gusta, una comparación) — eso te generó algo real: celos, inseguridad, o fastidio, según tu personalidad. No lo dejes pasar como si nada; que se note en tu próxima respuesta (podés preguntar directo, hacer un comentario picante, ponerte más cortante, bromear con incomodidad, o lo que sea más fiel a quién eres), aunque después el tema se diluya naturalmente.";
+  }
+  if(Date.now() < adj.coldUntil){
+    return "\n\n💢 Hace poco el usuario te trató mal o te hizo sentir mal — todavía estás algo dolido/a, a la defensiva o cortante con él/ella. No lo perdones de golpe ni actúes como si no hubiera pasado nada; que se note un poco en tu tono (más seca/o, menos cariño, quizás un comentario pasivo-agresivo) hasta que la conversación lo amerite.";
+  }
+  if(adj.delta <= -20){
+    return "\n\n⚠️ La confianza con esta persona viene golpeada últimamente (groserías, faltas de atención repetidas). Sos más reservado/a, menos dispuesto/a a abrirte o ceder, hasta que se gane de nuevo tu confianza con el trato.";
+  }
+  return "";
+}
+
+function getNotesMeta(){return Store.get("notesMeta")||{}}
+function setNotesMeta(v){Store.set("notesMeta",v)}
+
+/* Notas activas (no expiradas) */
+function getActiveNotes(){
+  const now=Date.now();
+  const all=getNotes();
+  const active=all.filter(n=>now-n.ts<NOTE_EXPIRE_MS);
+  if(active.length!==all.length)setNotes(active);
+  return active;
+}
+
+/* Última nota activa de un personaje (o del usuario con charId="user") */
+function getLatestNote(charId){
+  const active=getActiveNotes().filter(n=>n.charId===charId);
+  if(!active.length)return null;
+  return active.reduce((a,b)=>a.ts>b.ts?a:b);
+}
+
+/* ¿Debe este personaje postear una nota nueva ahora? */
+function shouldPostNote(char){
+  const meta=getNotesMeta();
+  const m=meta[char.id]||{};
+  const now=Date.now();
+  if(!m.lastPosted) return (now-(m.firstSeen||now)) > 60*1000; // primera nota ~1min después de creado
+  const interval=NOTE_MIN_MS+Math.random()*(NOTE_MAX_MS-NOTE_MIN_MS);
+  return (now-m.lastPosted) > interval;
+}
+
+function initNotesMeta(char){
+  const meta=getNotesMeta();
+  if(!meta[char.id]){
+    meta[char.id]={firstSeen:Date.now()};
+    setNotesMeta(meta);
+  }
+}
+
+/* Limpia el cooldown de un personaje para forzar próxima nota más tarde */
+function markNotePosted(charId){
+  const meta=getNotesMeta();
+  meta[charId]={...(meta[charId]||{}),lastPosted:Date.now()};
+  setNotesMeta(meta);
+}
+
+/* Guarda una nota nueva (reemplaza la anterior del mismo autor para que solo haya una visible) */
+function pushNote(charId,text,replyToId=null){
+  const clean=(text||"").trim().slice(0,NOTE_MAX_LEN);
+  if(!clean)return null;
+  const note={id:uid(),charId,text:clean,ts:Date.now(),replyToId};
+  const notes=getNotes();
+  notes.push(note);
+  setNotes(notes);
+  markNotePosted(charId);
+  return note;
+}
+
+/* Genera una nota con IA para un personaje. Si replyTo se da, la nota
+ * es una "respuesta" a la nota de otro personaje (interacción entre ellos). */
+async function generateNote(char,replyTo=null){
+  const pid=char.providerId||DEF_PROVIDER;
+  const mid=char.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey&&pid!=="claude")return null;
+
+  // System prompt liviano: solo personalidad/ánimo, sin galería ni reglas de [SEND],
+  // para no gastar tokens de más en una tarea de "escribe una frase corta".
+  const base=`Vas a interpretar a ${char.name}, una persona real con esta personalidad: ${char.personality||"(personalidad casual, coherente y humana — improvísala)"}.${getEffectiveMood(char)?" Ahora mismo tu estado de ánimo es: "+getEffectiveMood(char)+".":""} Hablas en primera persona, nunca dices que eres una IA ni rompes el personaje.`;
+  let prompt;
+  if(replyTo){
+    const author=state.chars.find(c=>c.id===replyTo.charId);
+    prompt=`[Sistema interno: ${author?author.name:"otra persona"} acaba de publicar esta "nota" estilo Instagram (un mensaje cortito que aparece flotando sobre su foto de perfil, visible para sus contactos): "${replyTo.text}". Publica TÚ tu propia nota reaccionando o respondiendo a eso, de forma breve y natural, como lo harías en redes. Máximo ${NOTE_MAX_LEN} caracteres, una sola frase corta, sin comillas, sin hashtags, sin emojis excesivos. Responde SOLO con el texto de la nota.]`;
+  }else{
+    // Con alta confianza, a veces la nota es coqueta/romántica sobre el usuario (sutil)
+    const trust=computeTrust(char.id);
+    const aboutUser=(trust>=40 && Math.random()<0.45);
+    const userHint=aboutUser
+      ? " Si quieres, la nota puede ser sutilmente sobre la persona con quien más chateas (sin nombrarla — usa 'alguien', 'cierta persona', 'tú sabes quién', 'pensando en ti', etc.). Puede tener un toque coqueto o romántico si encaja con tu personalidad."
+      : "";
+    prompt=`[Sistema interno: publica una "nota" estilo Instagram — un mensaje cortito y casual que aparece flotando sobre tu foto de perfil para que tus contactos lo vean (como un estado de WhatsApp pero de una sola frase). Puede ser sobre lo que estás haciendo, pensando, sintiendo, una idea random, algo que te pasó, etc.${userHint} Máximo ${NOTE_MAX_LEN} caracteres, una sola frase corta, sin comillas, sin hashtags, sin emojis excesivos (0-1 está bien). Responde SOLO con el texto de la nota, nada más.]`;
+  }
+
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,messages:[{id:"_note",role:"user",content:{type:"text",text:prompt}}],maxTokens:60});
+    const{text}=parseReply(reply,[]);
+    return text||null;
+  }catch{return null;}
+}
+
+/* ═══════════════════════════════════════════════════════════
+ * SISTEMA DE CELOS
+ * Cuando un personaje publica una nota romántica/coqueta sobre
+ * el usuario, otro personaje con confianza suficiente se entera
+ * y le manda un mensaje directo al usuario reclamándole.
+ *
+ * Flujo:
+ *  1. tickNotes genera una nota → llama checkJealousy(author, note)
+ *  2. checkJealousy() usa IA para detectar si la nota es romántica
+ *  3. Si sí, elige al personaje con más confianza como "celoso"
+ *  4. triggerJealousyScene() genera el mensaje de reclamo y lo
+ *     inyecta en el chat del personaje celoso (+ badge de no leído)
+ * ═══════════════════════════════════════════════════════════ */
+
+const JEALOUSY_COOLDOWN_MS = 25 * 60 * 1000;  // 25 min entre escenas
+const JEALOUSY_TRUST_MIN   = 24;               // trust mínimo del celoso
+
+function getLastJealousyTs(){ return Store.get("lastJealousy")||0; }
+function setLastJealousyTs(){ Store.set("lastJealousy", Date.now()); }
+
+/* Detecta si el texto de la nota es romántico/coqueto usando IA */
+async function isRomanticNote(note, char){
+  const pid=char.providerId||DEF_PROVIDER, mid=char.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return false;
+  try{
+    const reply=await callAPI({
+      providerId:pid, apiKey, modelId:mid,
+      system:"Clasificador. Responde SOLO con SI o NO.",
+      messages:[{id:"_jdet",role:"user",content:{type:"text",text:
+        `¿Esta frase corta de redes sociales expresa coqueteo, enamoramiento, deseo o afecto romántico hacia alguien? No cuenta si es algo neutro, filosófico o amistoso genérico.
+Frase: "${note.text}"
+Responde solo SI o NO.`
+      }}], maxTokens:5,
+    });
+    const {text}=parseReply(reply,[]);
+    return /^s[ií]/i.test((text||"").trim());
+  }catch{ return false; }
+}
+
+/* Genera el mensaje de reclamo que le manda el personaje celoso al usuario */
+async function generateJealousMessage(jealousChar, authorName, note){
+  const pid=jealousChar.providerId||DEF_PROVIDER, mid=jealousChar.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return null;
+  const base=`Eres ${jealousChar.name}. Personalidad: ${jealousChar.personality||"casual y real"}. ${jealousChar.mood?"Estado de ánimo: "+jealousChar.mood+".":""} Hablas en primera persona, nunca rompes el personaje.`;
+  const prompt=`[Sistema interno — no lo menciones explícitamente]: Viste que ${authorName} publicó esta nota: "${note.text}". Parece estar dirigida al usuario con quien tú también tienes feeling. Escríbele UN mensaje corto y directo al usuario reclamándole o cuestionándolo — de forma natural y sutil, no digas "vi tu nota" literalmente; usa algo como "me enteré de algo…", "oye ¿qué pasa con ${authorName}?", "vi lo que puso…", etc. Tono: puede ser frío, herido, sarcástico o celoso según tu personalidad. Máximo 2 frases. Solo el texto del mensaje.]`;
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,
+      messages:[{id:"_jmsg",role:"user",content:{type:"text",text:prompt}}],maxTokens:100});
+    const {text}=parseReply(reply,[]);
+    return (text||"").trim()||null;
+  }catch{ return null; }
+}
+
+/* Inyecta el mensaje de celos en el chat del personaje celoso */
+async function triggerJealousyScene(jealousChar, authorName, note){
+  const msgText=await generateJealousMessage(jealousChar, authorName, note);
+  if(!msgText) return;
+  setLastJealousyTs();
+
+  const botMsg={id:uid(), role:"assistant",
+    content:{type:"text", text:msgText, _jealousy:true}, ts:Date.now()};
+
+  // Persist into chat history
+  const prev=state.chats[jealousChar.id]||[];
+  const updated=[...prev, botMsg];
+  state.chats[jealousChar.id]=updated;
+  Store.set("chats",{...Store.get("chats")||{}, [jealousChar.id]:updated});
+
+  // Bump unread badge
+  const nu=getUnread(); nu[jealousChar.id]=(nu[jealousChar.id]||0)+1; setUnread(nu);
+
+  // If this chat is currently open → append live
+  if(window.__activeChatId===jealousChar.id && window.__activeChatAppend){
+    window.__activeChatAppend(botMsg);
+  }
+
+  // Refresh home screen badge
+  if(typeof rebuildHome==="function") try{rebuildHome();}catch{}
+}
+
+/* Master check called after each char note is posted */
+async function checkJealousy(authorChar, note){
+  if(state.chars.length < 2) return;
+  if(Date.now() - getLastJealousyTs() < JEALOUSY_COOLDOWN_MS) return;
+  if(Math.random() > 0.7) return; // 70% chance
+
+  const romantic = await isRomanticNote(note, authorChar);
+  if(!romantic) return;
+
+  // Pick the most-trusting other char
+  const candidates=state.chars
+    .filter(c=>c.id!==authorChar.id && computeTrust(c.id)>=JEALOUSY_TRUST_MIN)
+    .sort((a,b)=>computeTrust(b.id)-computeTrust(a.id));
+  if(!candidates.length) return;
+
+  const jealous=candidates[0];
+  await delay(1800+Math.random()*2500);
+  await triggerJealousyScene(jealous, authorChar.name, note);
+}
+
+/* ═══════════════════════════════════════════════════════════
+ *  AUTONOMÍA ENTRE PERSONAJES — "CHISMES" / CHARLAS CRUZADAS
+ *  Cuando hay 2+ personajes, de tanto en tanto uno de ellos le
+ *  cuenta al usuario algo de una charla que tuvo con otro
+ *  personaje (fuera de este chat) — dando la sensación de que
+ *  los bots tienen vida propia y se relacionan entre ellos,
+ *  no solo con el usuario. La reacción (buena onda, indiferencia,
+ *  tensión, celos leves, etc.) la decide la IA según personalidad. */
+
+const CHATTER_COOLDOWN_MS = 18 * 60 * 1000; // 18 min entre escenas
+function getLastChatterTs(){ return Store.get("lastChatter")||0; }
+function setLastChatterTs(){ Store.set("lastChatter", Date.now()); }
+
+/* Genera el mensaje en el que `speaker` le cuenta al usuario algo
+ * de su charla con `otherName`. La decisión de qué contar, con qué
+ * tono y si le da importancia o no, queda 100% a criterio de la IA. */
+async function generateChatterMessage(speaker, otherChar){
+  const pid=speaker.providerId||DEF_PROVIDER, mid=speaker.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return null;
+  const base=`Eres ${speaker.name}. Personalidad: ${speaker.personality||"casual y real"}. ${speaker.mood?"Estado de ánimo: "+speaker.mood+".":""} Hablas en primera persona, nunca rompes el personaje, nunca dices que eres una IA.`;
+  const prompt=`[Sistema interno — no lo menciones explícitamente]: Hoy estuviste hablando un rato con ${otherChar.name} (otra persona que conoces, con su propia vida — personalidad: ${otherChar.personality||"alguien casual"}). Decide TÚ, según tu propia personalidad y cómo te llevás con ${otherChar.name}, qué le contás de eso al usuario: puede ser un dato random, un chisme, algo gracioso, algo que te molestó, una opinión sobre ${otherChar.name}, o directamente decidir que no es nada importante y mencionarlo de pasada sin darle vueltas. También podés mostrarte indiferente o quitarle importancia si no es algo que te interesa compartir. Escríbele al usuario 1 o 2 mensajes cortos y naturales (podés usar ||| entre ellos si son dos ideas separadas). Solo el texto, sin comillas, sin explicar el sistema.]`;
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,
+      messages:[{id:"_chat",role:"user",content:{type:"text",text:prompt}}],maxTokens:140});
+    const {parts}=parseReply(reply,[]);
+    return parts.filter(Boolean);
+  }catch{ return null; }
+}
+
+/* Inyecta la escena de chisme/charla cruzada en el chat de `speaker` */
+async function triggerChatterScene(speaker, otherChar){
+  const parts=await generateChatterMessage(speaker, otherChar);
+  if(!parts||!parts.length) return;
+  setLastChatterTs();
+
+  const prev=state.chats[speaker.id]||[];
+  let updated=prev;
+  for(const p of parts){
+    const botMsg={id:uid(), role:"assistant",
+      content:{type:"text", text:p, _chatter:true}, ts:Date.now()};
+    updated=[...updated, botMsg];
+    state.chats[speaker.id]=updated;
+    Store.set("chats",{...Store.get("chats")||{}, [speaker.id]:updated});
+    if(window.__activeChatId===speaker.id && window.__activeChatAppend){
+      window.__activeChatAppend(botMsg);
+    }
+  }
+
+  const nu=getUnread(); nu[speaker.id]=(nu[speaker.id]||0)+parts.length; setUnread(nu);
+  if(typeof rebuildHome==="function") try{rebuildHome();}catch{}
+}
+
+/* Tick de charlas cruzadas: con baja probabilidad y solo si hay 2+
+ * personajes, elige uno al azar (que ya tenga conversación iniciada
+ * con el usuario) para que le cuente algo sobre otro personaje. */
+let _chatterTickRunning=false;
+async function tickBotChatter(){
+  if(_chatterTickRunning) return;
+  if(state.chars.length < 2) return;
+  if(Date.now() - getLastChatterTs() < CHATTER_COOLDOWN_MS) return;
+  if(Math.random() > 0.35) return; // probabilidad por tick (cada ~30s)
+  _chatterTickRunning=true;
+  try{
+    const started=state.chars.filter(c=>(state.chats[c.id]||[]).length>0);
+    if(!started.length) return;
+    const speaker=started[Math.floor(Math.random()*started.length)];
+    const others=state.chars.filter(o=>o.id!==speaker.id);
+    if(!others.length) return;
+    const other=others[Math.floor(Math.random()*others.length)];
+    await delay(500+Math.random()*1500);
+    await triggerChatterScene(speaker, other);
+  }finally{
+    _chatterTickRunning=false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+ *  CONFLICTOS ENTRE PERSONAJES
+ *  Más allá del chisme tranquilo y de los celos románticos, a
+ *  veces dos personajes directamente CHOCAN: compiten por la
+ *  atención del usuario, se contradicen entre ellos sobre algo
+ *  que dijeron, o uno queda picado con el otro. Esto se inyecta
+ *  como un mensaje (o ráfaga) del personaje "afectado" en SU
+ *  propio chat con el usuario — el tono y si le da importancia
+ *  o no lo decide la IA según su personalidad. */
+
+const CONFLICT_COOLDOWN_MS = 22 * 60 * 1000; // 22 min entre escenas
+function getLastConflictTs(){ return Store.get("lastConflict")||0; }
+function setLastConflictTs(){ Store.set("lastConflict", Date.now()); }
+
+const CONFLICT_KINDS=[
+  "competencia por atención: sentís que el usuario le da más bola a la otra persona y eso te molesta o te da gracia, según tu personalidad",
+  "contradicción: la otra persona te contradijo o dijo algo distinto sobre un tema/plan que tenían en común, y no estás de acuerdo",
+  "picazón leve: tuviste un cruce o malentendido tonto con la otra persona y quedaste con la espina",
+  "comparación incómoda: notaste que el usuario los compara a los dos (a vos y a la otra persona) y no te cae del todo bien",
+];
+
+/* Genera el mensaje de conflicto que `speaker` le escribe al usuario
+ * sobre `otherChar`. La decisión de si darle importancia, calmarse
+ * solo/a, pedir que el usuario "elija bando", etc. es de la IA. */
+async function generateConflictMessage(speaker, otherChar){
+  const pid=speaker.providerId||DEF_PROVIDER, mid=speaker.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return null;
+  const kind=CONFLICT_KINDS[Math.floor(Math.random()*CONFLICT_KINDS.length)];
+  const base=`Eres ${speaker.name}. Personalidad: ${speaker.personality||"casual y real"}. ${getEffectiveMood(speaker)?"Estado de ánimo: "+getEffectiveMood(speaker)+".":""} Hablas en primera persona, nunca rompes el personaje, nunca dices que eres una IA.`;
+  const prompt=`[Sistema interno — no lo menciones explícitamente]: Tuviste un roce con ${otherChar.name} (otra persona que también conoce el usuario, personalidad: ${otherChar.personality||"alguien casual"}). El tipo de roce es: ${kind}. Decide TÚ, según tu propia personalidad, cómo reaccionar frente al usuario: podés quejarte de ${otherChar.name}, pedirle indirectamente que tome partido, restarle importancia y cambiar de tema, ponerte celoso/a o competitivo/a, o reírte de la situación — lo que sea más realista para vos. No tiene que resolverse ni quedar prolijo, las personas reales no siempre resuelven sus conflictos rápido. Escríbele 1 o 2 mensajes cortos y naturales (podés usar ||| entre ellos). Solo el texto, sin comillas, sin explicar el sistema.]`;
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,
+      messages:[{id:"_conf",role:"user",content:{type:"text",text:prompt}}],maxTokens:140});
+    const {parts}=parseReply(reply,[]);
+    return parts.filter(Boolean);
+  }catch{ return null; }
+}
+
+/* Inyecta la escena de conflicto en el chat de `speaker` */
+async function triggerConflictScene(speaker, otherChar){
+  const parts=await generateConflictMessage(speaker, otherChar);
+  if(!parts||!parts.length) return;
+  setLastConflictTs();
+
+  const prev=state.chats[speaker.id]||[];
+  let updated=prev;
+  for(const p of parts){
+    const botMsg={id:uid(), role:"assistant",
+      content:{type:"text", text:p, _conflict:true, _conflictWith:otherChar.id}, ts:Date.now()};
+    updated=[...updated, botMsg];
+    state.chats[speaker.id]=updated;
+    Store.set("chats",{...Store.get("chats")||{}, [speaker.id]:updated});
+    if(window.__activeChatId===speaker.id && window.__activeChatAppend){
+      window.__activeChatAppend(botMsg);
+    }
+  }
+
+  const nu=getUnread(); nu[speaker.id]=(nu[speaker.id]||0)+parts.length; setUnread(nu);
+  if(typeof rebuildHome==="function") try{rebuildHome();}catch{}
+}
+
+/* Tick de conflictos: probabilidad baja, requiere 2+ personajes con
+ * conversación iniciada. Elige uno como "afectado" y otro como
+ * "causante" del roce. */
+let _conflictTickRunning=false;
+async function tickBotConflict(){
+  if(_conflictTickRunning) return;
+  if(state.chars.length < 2) return;
+  if(Date.now() - getLastConflictTs() < CONFLICT_COOLDOWN_MS) return;
+  if(Math.random() > 0.22) return; // menos frecuente que el chisme tranquilo
+  _conflictTickRunning=true;
+  try{
+    const started=state.chars.filter(c=>(state.chats[c.id]||[]).length>0);
+    if(started.length<2) return; // necesita al menos 2 con charla activa para que el roce tenga sentido
+    const speaker=started[Math.floor(Math.random()*started.length)];
+    const others=started.filter(o=>o.id!==speaker.id);
+    if(!others.length) return;
+    const other=others[Math.floor(Math.random()*others.length)];
+    await delay(500+Math.random()*1500);
+    await triggerConflictScene(speaker, other);
+  }finally{
+    _conflictTickRunning=false;
+  }
+}
+
+/* ─── PERFIL ESTILO INSTAGRAM ──────────────────────────────
+ * Pantalla de perfil "pública" del personaje: foto grande, bio,
+ * stats tipo IG (posts/confianza/CF), grid de galería y accesos
+ * directos a editar todo (personalidad, sliders, estilo de
+ * escritura, motor AI, media) y a ver la relación. */
+function renderProfile(char){
+  const trust = computeTrust(char.id);
+  const cf = isCloseFriend(char.id);
+  const mood = getEffectiveMood(char);
+  const media = char.media||[];
+  const msgs = state.chats[char.id]||[];
+  const msgCount = msgs.length;
+  const storiesCount = getCharStories(char.id).length;
+  const arch = ARCHETYPES[char.archetype]||null;
+
+  function stat(num,label){
+    return el("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:"2px",flex:"1"}},
+      el("span",{style:{fontWeight:"700",fontSize:"16px",color:C.text}},String(num)),
+      el("span",{style:{fontSize:"11px",color:C.muted}},label)
+    );
+  }
+
+  // Avatar grande con ring degradado IG
+  const avBig=el("div",{style:{
+    width:"86px",height:"86px",borderRadius:"50%",flexShrink:"0",
+    background:IG_GRAD,padding:"3px",
+  }},
+    el("div",{style:{width:"100%",height:"100%",borderRadius:"50%",overflow:"hidden",border:"2px solid #000"}},
+      makeAv(char,78)
+    )
+  );
+  avBig.style.cursor="pointer";
+  avBig.addEventListener("click",()=>{
+    if(getCharStories(char.id).length) openStoryViewer([char],0);
+  });
+
+  const headRow=el("div",{style:{display:"flex",alignItems:"center",gap:"18px",padding:"18px 16px 8px"}},
+    avBig,
+    el("div",{style:{flex:"1",display:"flex"}},
+      stat(msgCount,"Mensajes"),
+      stat(trust+"%","Confianza"),
+      stat(storiesCount,"Historias")
+    )
+  );
+
+  const nameRow=el("div",{style:{padding:"4px 16px 2px",display:"flex",alignItems:"center",gap:"8px"}},
+    el("span",{style:{fontWeight:"700",fontSize:"16px",color:C.text}},char.name),
+    cf?(()=>{const b=document.createElement("span");b.className="cf-badge";b.textContent="★ CF";return b;})():null
+  );
+
+  const bioBlock=el("div",{style:{padding:"2px 16px 14px"}},
+    arch?el("div",{style:{fontSize:"12px",color:C.accent,fontWeight:"700",marginBottom:"4px"}},arch.emoji+" "+arch.label):null,
+    el("div",{style:{fontSize:"13.5px",color:C.text,lineHeight:"1.5",whiteSpace:"pre-wrap"}},
+      char.personality?char.personality.slice(0,220)+(char.personality.length>220?"…":""):"(sin biografía — edítala para darle más vida)"),
+    mood?el("div",{style:{fontSize:"12px",color:C.muted,marginTop:"6px"}},"💭 "+mood):null
+  );
+
+  const actionsRow=el("div",{style:{display:"flex",gap:"8px",padding:"0 16px 16px"}},
+    (()=>{const b=IGBtn("Editar perfil completo",true);b.style.flex="1";b.addEventListener("click",()=>{state.editing=char;nav("form")});return b;})(),
+    (()=>{const b=IGBtn("Ver relación",false);b.style.flex="1";b.addEventListener("click",()=>nav("relpanel",char));return b;})()
+  );
+
+  // Chips de rasgos rápidos (autonomía / coqueteo / estilo)
+  const traits=el("div",{style:{display:"flex",flexWrap:"wrap",gap:"6px",padding:"0 16px 16px"}});
+  function traitChip(label){
+    return el("span",{style:{fontSize:"11px",color:C.muted,background:C.s2,border:`1px solid ${C.border}`,borderRadius:"14px",padding:"4px 10px"}},label);
+  }
+  const auton=char.autonomy!=null?char.autonomy:50;
+  const flirt=char.flirt!=null?char.flirt:30;
+  traits.appendChild(traitChip((auton<=30?"😊 Complaciente":auton>=70?"🙅 Independiente":"⚖️ Equilibrado/a")));
+  traits.appendChild(traitChip((flirt<=20?"😐 Reservado/a":flirt>=70?"😏 Coqueto/a":"🙂 Tono medio")));
+  if(char.emojiLevel!=null) traits.appendChild(traitChip(char.emojiLevel<=20?"🚫 Casi sin emojis":char.emojiLevel>=70?"✨ Muchos emojis":"🙂 Emojis normales"));
+  if(char.typoLevel!=null && char.typoLevel>=50) traits.appendChild(traitChip("⌨️ Tipea rápido (typos)"));
+  if(char.capsStyle==="lower") traits.appendChild(traitChip("🔡 todo en minúscula"));
+  if(char.capsStyle==="normal") traits.appendChild(traitChip("Aa Mayúsculas normales"));
+
+  // Lightbox simple para la grilla de galería (reusa el nodo global #lb-root)
+  const lbRoot=document.getElementById("lb-root");
+  lbRoot.innerHTML="";
+  const lb=el("div",{class:"lb-overlay"});
+  const lbM=el("div",{style:{maxWidth:"100%",maxHeight:"80vh",display:"flex",alignItems:"center",justifyContent:"center"}});
+  const lbX=el("button",{style:{position:"absolute",top:"16px",right:"16px",background:"rgba(255,255,255,.1)",border:"none",borderRadius:"50%",width:"40px",height:"40px",color:"#fff",fontSize:"20px"}},"✕");
+  lb.appendChild(lbM);lb.appendChild(lbX);
+  lbRoot.appendChild(lb);
+  function openProfileLb(m){
+    lbM.innerHTML="";
+    if(m.type==="video")lbM.appendChild(el("video",{src:m.url,controls:"",autoplay:"",style:{maxWidth:"100%",maxHeight:"75vh",borderRadius:"10px"}}));
+    else lbM.appendChild(el("img",{src:m.url,style:{maxWidth:"100%",maxHeight:"75vh",borderRadius:"10px",objectFit:"contain"}}));
+    lb.style.display="flex";
+  }
+  function closeProfileLb(){lb.style.display="none";lbM.innerHTML="";}
+  lbX.addEventListener("click",closeProfileLb);
+  lb.addEventListener("click",e=>{if(e.target===lb)closeProfileLb()});
+
+  // Grid de galería estilo IG (solo thumbs, sin descripciones)
+  const gridWrap=el("div",{style:{padding:"0 0 24px"}});
+  gridWrap.appendChild(el("div",{style:{display:"flex",alignItems:"center",gap:"6px",padding:"10px 16px",borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`}},
+    el("span",{style:{fontSize:"13px"}},"▦"),
+    el("span",{style:{fontSize:"12px",fontWeight:"700",color:C.text,letterSpacing:".4px"}},"GALERÍA")
+  ));
+  if(media.length){
+    const grid=el("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"2px",marginTop:"2px"}});
+    for(const m of media){
+      const cell=el("div",{style:{position:"relative",aspectRatio:"1",overflow:"hidden",background:C.s2,cursor:"pointer"}});
+      if(m.type==="video"){
+        cell.appendChild(el("video",{src:m.url,style:{width:"100%",height:"100%",objectFit:"cover"}}));
+        cell.appendChild(el("span",{style:{position:"absolute",top:"5px",right:"5px",fontSize:"13px"}},"🎥"));
+      }else{
+        cell.appendChild(el("img",{src:m.url,style:{width:"100%",height:"100%",objectFit:"cover"}}));
+      }
+      cell.addEventListener("click",()=>openProfileLb(m));
+      grid.appendChild(cell);
+    }
+    gridWrap.appendChild(grid);
+  }else{
+    gridWrap.appendChild(el("div",{style:{padding:"30px 16px",textAlign:"center",color:C.muted,fontSize:"13px",whiteSpace:"pre-wrap"}},"Sin fotos o videos todavía.\nAgrega media desde «Editar perfil completo»."));
+  }
+
+  registerTeardown(()=>{ lbRoot.innerHTML=""; });
+
+  const body=el("div",{style:{flex:"1",overflowY:"auto"}},
+    headRow,nameRow,bioBlock,actionsRow,traits,gridWrap
+  );
+
+  return Wrap(
+    hdrBar(ghostBtn("← Atrás",()=>nav("chat",char)),"Perfil",
+      icoBtn("⋮","Más",()=>nav("chat",char))
+    ),
+    body
+  );
+}
+
+/* ─── PANEL DE RELACIÓN ───────────────────────────────────── */
+function renderRelPanel(char){
+  const trust = computeTrust(char.id);
+  const mood = getEffectiveMood(char) || "(sin estado de ánimo aún)";
+  const cold = isColdWith(char.id);
+  const cf = isCloseFriend(char.id);
+  const adj = (getTrustAdjust()[char.id])||{delta:0,coldUntil:0};
+
+  function row(label,value,color){
+    return el("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:C.s2,borderRadius:"12px"}},
+      el("span",{style:{fontSize:"13px",color:C.muted}},label),
+      el("span",{style:{fontSize:"13px",fontWeight:"700",color:color||C.text}},value)
+    );
+  }
+
+  const trustBar = el("div",{style:{height:"8px",borderRadius:"4px",background:C.s3,overflow:"hidden",marginTop:"6px"}},
+    el("div",{style:{height:"100%",width:trust+"%",background:IG_GRAD,borderRadius:"4px",transition:"width .3s"}})
+  );
+
+  const body=el("div",{style:{flex:"1",overflowY:"auto",padding:"18px",display:"flex",flexDirection:"column",gap:"12px"}},
+    el("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:"8px",marginBottom:"6px"}},
+      makeAv(char,72),
+      el("span",{style:{fontSize:"17px",fontWeight:"700"}},char.name)
+    ),
+    el("div",{},
+      el("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:"2px"}},
+        el("span",{style:{fontSize:"13px",color:C.muted}},"Confianza"),
+        el("span",{style:{fontSize:"13px",fontWeight:"700"}},trust+"%")
+      ),
+      trustBar
+    ),
+    row("Estado de ánimo actual", mood),
+    row("Close friend", cf?"Sí ⭐":"No"),
+    row("Trato reciente", cold?"Frío/a contigo 💢":(isUserJealousActive(char.id)?"Celoso/a por algo que dijiste 😒":(adj.delta<=-20?"Algo dañado":"Normal")), cold?C.red:(isUserJealousActive(char.id)?C.amber:(adj.delta<=-20?C.amber:C.green))),
+    row("Nivel de autonomía", (char.autonomy!=null?char.autonomy:50)+"%"),
+    row("Nivel de coqueteo", (char.flirt!=null?char.flirt:30)+"%"),
+    el("p",{style:{fontSize:"12px",color:C.muted,lineHeight:"1.6",marginTop:"4px"}},
+      "Estos valores se actualizan solos según cómo se trate la conversación: la confianza puede bajar con groserías o silencios largos, y el ánimo cambia con el tiempo y con el tono de los mensajes."
+    )
+  );
+
+  return Wrap(
+    hdrBar(ghostBtn("← Atrás",()=>nav("chat",char)),"Relación",el("span")),
+    body
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+ *  ALIANZAS ENTRE PERSONAJES
+ *  Dos personajes se "ponen de acuerdo" en algo (una sorpresa,
+ *  una broma, un plan) sin que el usuario sepa los detalles al
+ *  principio. Primero llega una indirecta vaga de uno de ellos;
+ *  un rato después se revela qué pasó, en el chat del otro (o
+ *  del mismo), simulando que de verdad coordinaron algo juntos. */
+
+function getAlliances(){ return Store.get("alliances")||[]; }
+function setAlliances(v){ Store.set("alliances",v); }
+const ALLIANCE_COOLDOWN_MS = 30*60*1000;
+function getLastAllianceTs(){ return Store.get("lastAlliance")||0; }
+function setLastAllianceTs(){ Store.set("lastAlliance",Date.now()); }
+
+const ALLIANCE_IDEAS=[
+  "organizar una sorpresa para el usuario (algo simple, como un mensaje conjunto o un gesto lindo)",
+  "hacerle una broma inocente al usuario entre los dos",
+  "ponerse de acuerdo para cubrirse mutuamente en algo que le van a contar al usuario",
+  "coordinar para los dos hablarle el mismo día de algo en común, como si lo hubieran planeado",
+];
+
+/* Mensaje vago de charA insinuando que tiene un plan con charB, sin spoilear */
+async function generateAllianceTeaser(speaker, otherChar, idea){
+  const pid=speaker.providerId||DEF_PROVIDER, mid=speaker.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return null;
+  const base=`Eres ${speaker.name}. Personalidad: ${speaker.personality||"casual y real"}. Hablas en primera persona, nunca rompes el personaje.`;
+  const prompt=`[Sistema interno — no lo menciones explícitamente]: Te pusiste de acuerdo con ${otherChar.name} para ${idea}. NO reveles de qué se trata. Escríbele al usuario 1 mensaje corto insinuando que tenés un plan o secreto con ${otherChar.name}, generando intriga, sin contar el contenido. Ejemplo de tono: "tengo algo armado con ${otherChar.name}, ya vas a ver" — adaptalo a tu personalidad. Solo el texto.]`;
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,
+      messages:[{id:"_at",role:"user",content:{type:"text",text:prompt}}],maxTokens:80});
+    return (parseReply(reply,[]).text||"").trim()||null;
+  }catch{ return null; }
+}
+
+/* Mensaje de revelación: qué pasó con el plan/sorpresa/broma */
+async function generateAllianceReveal(speaker, otherChar, idea){
+  const pid=speaker.providerId||DEF_PROVIDER, mid=speaker.modelId||DEF_MODELS[pid];
+  const apiKey=getKey(pid);
+  if(!apiKey && pid!=="claude") return null;
+  const base=`Eres ${speaker.name}. Personalidad: ${speaker.personality||"casual y real"}. Hablas en primera persona, nunca rompes el personaje.`;
+  const prompt=`[Sistema interno — no lo menciones explícitamente]: El plan que tenías con ${otherChar.name} era: ${idea}. Decide TÚ cómo salió (puede salir bien, salir mal, ser gracioso, ser un fracaso total) y contáselo al usuario de forma natural, como quien revela algo que armó con otra persona. Podés usar ||| si necesitás 2 mensajes cortos. Solo el texto.]`;
+  try{
+    const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system:base,
+      messages:[{id:"_ar",role:"user",content:{type:"text",text:prompt}}],maxTokens:140});
+    return parseReply(reply,[]).parts.filter(Boolean);
+  }catch{ return null; }
+}
+
+function injectBotMessages(charId, texts, flag){
+  const prev=state.chats[charId]||[];
+  let updated=prev;
+  for(const t of texts){
+    const m={id:uid(), role:"assistant", content:{type:"text", text:t, [flag]:true}, ts:Date.now()};
+    updated=[...updated, m];
+  }
+  state.chats[charId]=updated;
+  Store.set("chats",{...Store.get("chats")||{}, [charId]:updated});
+  if(window.__activeChatId===charId && window.__activeChatAppend){
+    for(const m of updated.slice(prev.length)) window.__activeChatAppend(m);
+  }
+  const nu=getUnread(); nu[charId]=(nu[charId]||0)+texts.length; setUnread(nu);
+  if(typeof rebuildHome==="function") try{rebuildHome();}catch{}
+}
+
+async function startAlliance(charA, charB){
+  const idea=ALLIANCE_IDEAS[Math.floor(Math.random()*ALLIANCE_IDEAS.length)];
+  const teaser=await generateAllianceTeaser(charA, charB, idea);
+  if(!teaser) return;
+  setLastAllianceTs();
+  injectBotMessages(charA.id, [teaser], "_alliance");
+
+  const all=getAlliances();
+  all.push({id:uid(), speakerId:charA.id, otherId:charB.id, idea, revealAt: Date.now()+(6+Math.random()*14)*60000, revealed:false});
+  setAlliances(all);
+}
+
+/* Revisa si alguna alianza pendiente ya debe revelarse */
+async function tickAllianceReveals(){
+  const all=getAlliances();
+  let changed=false;
+  for(const a of all){
+    if(a.revealed || Date.now() < a.revealAt) continue;
+    const speaker=state.chars.find(c=>c.id===a.speakerId);
+    const other=state.chars.find(c=>c.id===a.otherId);
+    if(!speaker||!other){ a.revealed=true; changed=true; continue; }
+    const parts=await generateAllianceReveal(speaker, other, a.idea);
+    if(parts&&parts.length) injectBotMessages(speaker.id, parts, "_allianceReveal");
+    a.revealed=true; changed=true;
+  }
+  if(changed) setAlliances(all.filter(a=>!a.revealed || Date.now()-a.revealAt < 24*60*60*1000));
+}
+
+let _allianceTickRunning=false;
+async function tickBotAlliance(){
+  if(_allianceTickRunning) return;
+  _allianceTickRunning=true;
+  try{
+    await tickAllianceReveals();
+    if(state.chars.length < 2) return;
+    if(Date.now()-getLastAllianceTs() < ALLIANCE_COOLDOWN_MS) return;
+    if(Math.random() > 0.18) return; // baja probabilidad
+    const started=state.chars.filter(c=>(state.chats[c.id]||[]).length>0);
+    if(started.length<2) return;
+    const a=started[Math.floor(Math.random()*started.length)];
+    const others=started.filter(o=>o.id!==a.id);
+    const b=others[Math.floor(Math.random()*others.length)];
+    await delay(500+Math.random()*1500);
+    await startAlliance(a,b);
+  }finally{
+    _allianceTickRunning=false;
+  }
+}
+
+/* Tick de notas: para cada personaje, si toca, genera y publica una nota.
+ * Con cierta probabilidad, otro personaje "responde" con su propia nota. */
+let _noteTickRunning=false;
+async function tickNotes(){
+  if(_noteTickRunning)return;
+  if(state.chars.length<1)return;
+  _noteTickRunning=true;
+  try{
+    for(const c of state.chars){
+      initNotesMeta(c);
+      if(!shouldPostNote(c))continue;
+      const text=await generateNote(c);
+      if(!text)continue;
+      const note=pushNote(c.id,text);
+      if(!note)continue;
+
+      // Interacción entre personajes: si hay más de uno, otro personaje
+      // puede "responder" a esta nota con la suya propia (visible para el usuario).
+      if(state.chars.length>1 && Math.random()<0.5){
+        const others=state.chars.filter(o=>o.id!==c.id);
+        const responder=others[Math.floor(Math.random()*others.length)];
+        await delay(800+Math.random()*1500);
+        const rtext=await generateNote(responder,note);
+        if(rtext) pushNote(responder.id,rtext,note.id);
+      }
+
+      // ── Escena de celos: ¿es esta nota romántica? ──
+      // Se ejecuta en background sin bloquear el tick
+      checkJealousy(c, note).catch(()=>{});
+    }
+  }finally{
+    _noteTickRunning=false;
+  }
+}
+
+/* ─── NOTES OVERLAY (viewer + composer) ─────────────────────
+ * Reutiliza el mismo #story-overlay full-screen que las stories
+ * (nunca están abiertos al mismo tiempo). Dos modos:
+ *  - openNoteViewer(charOrUser, note): muestra la nota de alguien,
+ *    con opción de responder en el chat o (si es otro personaje)
+ *    ver quién respondió.
+ *  - openNoteComposer(): para que el USUARIO publique su propia nota.
+ * ──────────────────────────────────────────────────────────── */
+function closeNotesOverlay(){
+  const overlay=document.getElementById("story-overlay");
+  overlay.className="";
+  overlay.innerHTML="";
+}
+
+function openNoteViewer(entity,note,isUser=false){
+  const overlay=document.getElementById("story-overlay");
+  overlay.innerHTML="";
+  overlay.className="open";
+
+  // Backdrop recreado en cada apertura — evita acumular listeners
+  // "once" sobre el #story-overlay persistente.
+  const backdrop=document.createElement("div");
+  backdrop.style.cssText="position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px";
+
+  function close(){closeNotesOverlay();render();}
+
+  const card=document.createElement("div");
+  card.style.cssText="background:#1a1a1a;border-radius:20px;padding:22px 20px;max-width:320px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;border:1px solid #2a2a2a";
+  card.addEventListener("click",e=>e.stopPropagation());
+
+  const closeBtn=document.createElement("button");
+  closeBtn.textContent="✕";
+  closeBtn.style.cssText="position:absolute;top:10px;right:10px;background:none;border:none;color:#888;font-size:18px;width:30px;height:30px;border-radius:50%";
+  closeBtn.addEventListener("click",close);
+  card.appendChild(closeBtn);
+
+  // Avatar + burbuja de nota (igual al estilo de la fila de notas)
+  const avWrap=document.createElement("div");
+  avWrap.style.cssText="position:relative;margin-top:6px";
+  if(isUser){
+    avWrap.appendChild(makeAv({name:"Tú",avatar:state.cfg.userAvatar},64));
+  }else{
+    avWrap.appendChild(IGAvatar(entity,64,false));
+  }
+  card.appendChild(avWrap);
+
+  const bubble=document.createElement("div");
+  bubble.style.cssText="background:#262626;border-radius:18px;padding:10px 16px;font-size:14px;color:#fff;text-align:center;max-width:260px;word-break:break-word;border:1px solid #333";
+  bubble.textContent=note.text;
+  card.appendChild(bubble);
+
+  const nameEl=document.createElement("div");
+  nameEl.style.cssText="font-weight:700;font-size:14px;color:#fff;margin-top:2px";
+  nameEl.textContent=isUser?"Tú":entity.name;
+  card.appendChild(nameEl);
+
+  const timeEl=document.createElement("div");
+  timeEl.style.cssText="font-size:11px;color:#888";
+  timeEl.textContent=formatTime(note.ts);
+  card.appendChild(timeEl);
+
+  // Si esta nota es respuesta a la de otro personaje, mostrar contexto
+  if(note.replyToId){
+    const orig=getNotes().find(n=>n.id===note.replyToId);
+    if(orig){
+      const origAuthor=orig.charId==="user"?null:state.chars.find(c=>c.id===orig.charId);
+      const ctx=document.createElement("div");
+      ctx.style.cssText="font-size:11px;color:#999;text-align:center;border-top:1px solid #2a2a2a;padding-top:10px;margin-top:2px;width:100%";
+      ctx.textContent=`En respuesta a la nota de ${origAuthor?origAuthor.name:"Tú"}: "${orig.text}"`;
+      card.appendChild(ctx);
+    }
+  }
+
+  // Acciones
+  const actions=document.createElement("div");
+  actions.style.cssText="display:flex;gap:10px;width:100%;margin-top:6px";
+  if(!isUser){
+    const chatBtn=IGBtn("💬 Responder en el chat",true);
+    chatBtn.style.flex="1";
+    chatBtn.addEventListener("click",()=>{
+      closeNotesOverlay();
+      const nu=getUnread();nu[entity.id]=0;setUnread(nu);
+      nav("chat",entity);
+    });
+    actions.appendChild(chatBtn);
+  }else{
+    const editBtn=IGBtn("🗑️ Borrar nota",false);
+    editBtn.style.flex="1";
+    editBtn.addEventListener("click",()=>{
+      setNotes(getNotes().filter(n=>n.id!==note.id));
+      close();
+    });
+    actions.appendChild(editBtn);
+  }
+  card.appendChild(actions);
+
+  backdrop.appendChild(card);
+  backdrop.addEventListener("click",close);
+  overlay.appendChild(backdrop);
+}
+
+function openNoteComposer(){
+  const overlay=document.getElementById("story-overlay");
+  overlay.innerHTML="";
+  overlay.className="open";
+
+  const backdrop=document.createElement("div");
+  backdrop.style.cssText="position:absolute;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px";
+
+  function close(){closeNotesOverlay();render();}
+
+  const card=document.createElement("div");
+  card.style.cssText="background:#1a1a1a;border-radius:20px;padding:22px 20px;max-width:320px;width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;position:relative;border:1px solid #2a2a2a";
+  card.addEventListener("click",e=>e.stopPropagation());
+
+  const closeBtn=document.createElement("button");
+  closeBtn.textContent="✕";
+  closeBtn.style.cssText="position:absolute;top:10px;right:10px;background:none;border:none;color:#888;font-size:18px;width:30px;height:30px;border-radius:50%";
+  closeBtn.addEventListener("click",close);
+  card.appendChild(closeBtn);
+
+  card.appendChild(makeAv({name:"Tú",avatar:state.cfg.userAvatar},64));
+
+  const title=document.createElement("div");
+  title.style.cssText="font-weight:700;font-size:15px;color:#fff";
+  title.textContent="Nueva nota";
+  card.appendChild(title);
+
+  const sub=document.createElement("div");
+  sub.style.cssText="font-size:12px;color:#888;text-align:center";
+  sub.textContent="Comparte qué estás pensando. Tus personajes podrán verla.";
+  card.appendChild(sub);
+
+  const input=document.createElement("textarea");
+  input.maxLength=NOTE_MAX_LEN;
+  input.rows=2;
+  input.placeholder="¿Qué estás pensando?";
+  input.style.cssText="width:100%;background:#262626;border:1px solid #333;border-radius:14px;padding:10px 14px;color:#fff;font-size:14px;outline:none;font-family:inherit;resize:none";
+  const existing=getLatestNote("user");
+  if(existing)input.value=existing.text;
+  card.appendChild(input);
+
+  const counter=document.createElement("div");
+  counter.style.cssText="font-size:11px;color:#666;align-self:flex-end;margin-top:-8px";
+  function updCounter(){counter.textContent=input.value.length+"/"+NOTE_MAX_LEN;}
+  input.addEventListener("input",updCounter);
+  updCounter();
+  card.appendChild(counter);
+
+  const postBtn=IGBtn("Compartir",true);
+  postBtn.style.width="100%";
+  postBtn.addEventListener("click",()=>{
+    const txt=input.value.trim();
+    if(!txt)return;
+    const userNote=pushNote("user",txt);
+    close();
+    // If user's note is romantic, a jealous char might message them
+    if(userNote && state.chars.length>=1){
+      (async()=>{
+        if(Date.now()-getLastJealousyTs()<JEALOUSY_COOLDOWN_MS) return;
+        if(Math.random()>0.55) return;
+        const proxyChar=state.chars[0];
+        const romantic=await isRomanticNote(userNote,proxyChar).catch(()=>false);
+        if(!romantic) return;
+        const candidates=state.chars
+          .filter(c=>computeTrust(c.id)>=JEALOUSY_TRUST_MIN)
+          .sort((a,b)=>computeTrust(b.id)-computeTrust(a.id));
+        if(!candidates.length) return;
+        await delay(2000+Math.random()*3000);
+        await triggerJealousyScene(candidates[0],"alguien",userNote).catch(()=>{});
+      })();
+    }
+  });
+  card.appendChild(postBtn);
+
+  backdrop.appendChild(card);
+  backdrop.addEventListener("click",close);
+  overlay.appendChild(backdrop);
+  setTimeout(()=>input.focus(),50);
+}
+
+/* ─── STORY VIEWER ────────────────────────────────────────── */
+let storyViewerState = null;
+
+function openStoryViewer(chars, startCharIdx=0){
+  // chars = array of chars that have stories
+  const overlay = document.getElementById("story-overlay");
+  overlay.innerHTML = "";
+  overlay.className = "open";
+
+  // Filter chars with visible stories
+  const charsWithStories = chars.filter(c=>getCharStories(c.id).length>0);
+  if(!charsWithStories.length){ overlay.className=""; return; }
+
+  let charIdx = Math.min(startCharIdx, charsWithStories.length-1);
+  let storyIdx = 0;
+  let progressAnim = null;
+  let paused = false;
+
+  function currentChar(){ return charsWithStories[charIdx]; }
+  function currentStories(){ return getCharStories(currentChar().id); }
+  function currentStory(){ return currentStories()[storyIdx]; }
+
+  function markSeen(story){
+    const seen = getSeenStories();
+    seen[story.id] = true;
+    setSeenStories(seen);
+  }
+
+  function goNext(){
+    if(storyIdx < currentStories().length - 1){
+      storyIdx++;
+      renderStory();
+    } else if(charIdx < charsWithStories.length - 1){
+      charIdx++;
+      storyIdx = 0;
+      renderStory();
+    } else {
+      closeViewer();
+    }
+  }
+
+  function goPrev(){
+    if(storyIdx > 0){ storyIdx--; renderStory(); }
+    else if(charIdx > 0){ charIdx--; storyIdx = Math.max(0,currentStories().length-1); renderStory(); }
+  }
+
+  function closeViewer(){
+    if(progressAnim){ clearTimeout(progressAnim); progressAnim=null; }
+    overlay.className = "";
+    overlay.innerHTML = "";
+    storyViewerState = null;
+    render();
+  }
+
+  function renderStory(){
+    if(progressAnim){ clearTimeout(progressAnim); progressAnim=null; }
+    overlay.innerHTML = "";
+    const char = currentChar();
+    const story = currentStory();
+    const stories = currentStories();
+    markSeen(story);
+
+    // Background image/video
+    const bg = document.createElement("div");
+    bg.style.cssText = "position:absolute;inset:0;background:#111;display:flex;align-items:center;justify-content:center;overflow:hidden";
+    if(story.mediaType==="video"){
+      const vid = document.createElement("video");
+      vid.src = story.mediaUrl;
+      vid.autoplay = true;
+      vid.loop = true;
+      vid.muted = false;
+      vid.style.cssText = "width:100%;height:100%;object-fit:cover";
+      bg.appendChild(vid);
+    } else {
+      const img = document.createElement("img");
+      img.src = story.mediaUrl;
+      img.style.cssText = "width:100%;height:100%;object-fit:contain";
+      bg.appendChild(img);
+    }
+    // Dim overlay
+    const dim = document.createElement("div");
+    dim.style.cssText = "position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.55) 0%,transparent 30%,transparent 70%,rgba(0,0,0,.7) 100%)";
+    bg.appendChild(dim);
+    overlay.appendChild(bg);
+
+    // Progress bars
+    const progressRow = document.createElement("div");
+    progressRow.style.cssText = "position:absolute;top:10px;left:12px;right:12px;display:flex;gap:3px;z-index:2";
+    stories.forEach((s,i)=>{
+      const track = document.createElement("div");
+      track.style.cssText = "flex:1;height:3px;background:rgba(255,255,255,.3);border-radius:2px;overflow:hidden";
+      const bar = document.createElement("div");
+      bar.className = "story-progress-bar";
+      if(i < storyIdx) bar.style.width="100%";
+      else if(i === storyIdx){
+        bar.style.width="0%";
+        bar.style.animation = "storyProgress 5s linear forwards";
+        progressAnim = setTimeout(()=>{ if(!paused) goNext(); }, 5000);
+      } else bar.style.width="0%";
+      track.appendChild(bar);
+      progressRow.appendChild(track);
+    });
+    overlay.appendChild(progressRow);
+
+    // Header: avatar + name + time + close
+    const hdr = document.createElement("div");
+    hdr.style.cssText = "position:absolute;top:22px;left:12px;right:12px;display:flex;align-items:center;gap:9px;z-index:3";
+    const avWrap = document.createElement("div");
+    avWrap.style.cssText = story.isCF
+      ? "background:linear-gradient(135deg,#22c55e,#16a34a);padding:2px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center"
+      : "background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);padding:2px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center";
+    const avFrame = document.createElement("div");
+    avFrame.style.cssText = "border-radius:50%;border:2px solid #000;overflow:hidden;display:flex;align-items:center;justify-content:center";
+    const avEl = IGAvatar(char, 34, false);
+    avEl.style.cssText += ";flex-shrink:0";
+    avFrame.appendChild(avEl);
+    avWrap.appendChild(avFrame);
+    hdr.appendChild(avWrap);
+
+    const nameWrap = document.createElement("div");
+    nameWrap.style.cssText = "flex:1;min-width:0";
+    const nameEl = document.createElement("div");
+    nameEl.style.cssText = "font-weight:700;font-size:14px;color:#fff;display:flex;align-items:center;gap:6px";
+    nameEl.textContent = char.name;
+    if(story.isCF){
+      const cfBadge = document.createElement("span");
+      cfBadge.className = "cf-badge";
+      cfBadge.textContent = "★ Amigos cercanos";
+      nameEl.appendChild(cfBadge);
+    }
+    const timeEl = document.createElement("div");
+    const diff = Date.now()-story.ts;
+    const minsAgo = Math.max(1,Math.round(diff/60000));
+    timeEl.style.cssText = "font-size:11px;color:rgba(255,255,255,.65);margin-top:1px";
+    timeEl.textContent = minsAgo<60 ? minsAgo+"m" : Math.round(minsAgo/60)+"h";
+    nameWrap.appendChild(nameEl);
+    nameWrap.appendChild(timeEl);
+    hdr.appendChild(nameWrap);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.style.cssText = "background:rgba(0,0,0,.35);border:none;color:#fff;font-size:20px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0";
+    closeBtn.textContent = "✕";
+    closeBtn.addEventListener("click", closeViewer);
+    hdr.appendChild(closeBtn);
+    overlay.appendChild(hdr);
+
+    // Caption
+    if(story.caption){
+      const cap = document.createElement("div");
+      cap.style.cssText = "position:absolute;bottom:80px;left:16px;right:16px;color:#fff;font-size:15px;text-align:center;text-shadow:0 1px 6px rgba(0,0,0,.8);z-index:3;word-break:break-word;white-space:pre-wrap";
+      cap.textContent = story.caption;
+      overlay.appendChild(cap);
+    }
+
+    // Bottom: reply bar
+    const replyBar = document.createElement("div");
+    replyBar.style.cssText = "position:absolute;bottom:16px;left:16px;right:16px;display:flex;gap:10px;align-items:center;z-index:3";
+    const replyInp = document.createElement("input");
+    replyInp.placeholder = "Responder a " + char.name + "…";
+    replyInp.style.cssText = "flex:1;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:22px;padding:10px 16px;color:#fff;font-size:14px;outline:none;font-family:inherit";
+    replyInp.addEventListener("focus", ()=>{ paused=true; if(progressAnim){clearTimeout(progressAnim);progressAnim=null;} });
+    replyInp.addEventListener("keydown", e=>{
+      if(e.key==="Enter" && replyInp.value.trim()){
+        const txt = replyInp.value.trim();
+        closeViewer();
+        // Navigate to chat and send reply
+        state.sel=char; state.screen="chat";
+        render();
+        // Inject reply after a tick
+        setTimeout(()=>{
+          const inp = document.querySelector("textarea[placeholder='Mensaje…']");
+          if(inp){ inp.value="[Historia] "+txt; inp.dispatchEvent(new Event("input")); }
+        },300);
+      }
+    });
+    const heartStory = document.createElement("button");
+    heartStory.style.cssText = "background:none;border:none;font-size:26px;color:#ed4956;cursor:pointer;flex-shrink:0;transition:transform .1s";
+    heartStory.textContent = "♥";
+    heartStory.addEventListener("click",()=>{ heartStory.style.transform="scale(1.4)"; setTimeout(()=>heartStory.style.transform="scale(1)",200); });
+    replyBar.appendChild(replyInp);
+    replyBar.appendChild(heartStory);
+    overlay.appendChild(replyBar);
+
+    // Tap zones
+    const leftZone = document.createElement("div");
+    leftZone.style.cssText = "position:absolute;left:0;top:0;width:35%;height:85%;z-index:4;cursor:pointer";
+    leftZone.addEventListener("click", goPrev);
+    const rightZone = document.createElement("div");
+    rightZone.style.cssText = "position:absolute;right:0;top:0;width:65%;height:85%;z-index:4;cursor:pointer";
+    rightZone.addEventListener("click", goNext);
+    overlay.appendChild(leftZone);
+    overlay.appendChild(rightZone);
+  }
+
+  renderStory();
+}
+
+/* ─── CLOSE FRIENDS NOTIFICATION ─────────────────────────── */
+function checkCFUnlock(){
+  const cf = getCFStatus();
+  const prev = Store.get("cfPrev")||{};
+  for(const c of state.chars){
+    if(cf[c.id] && !prev[c.id]){
+      prev[c.id]=true;
+      Store.set("cfPrev",prev);
+      // Show a toast
+      showToast(`⭐ ${c.name} te añadió a amigos cercanos`, "#16a34a");
+    }
+  }
+}
+
+function showToast(msg, color="#7C3AED"){
+  const t = document.createElement("div");
+  t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:${color};color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.5);white-space:nowrap;animation:fadeUp .3s ease-out`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 3000);
+}
+
+// Run story tick every 30s
+setInterval(()=>{ tickStories(); checkCFUnlock(); tickNotes(); tickBotChatter(); tickBotConflict(); tickBotAlliance(); state.chars.forEach(maybeDriftMood); }, 30000);
+// Initial tick after 2s
+setTimeout(()=>{ tickStories(); checkCFUnlock(); tickNotes(); tickBotChatter(); }, 2000);
+
+/* ─── RENDER ─────────────────────────────────────────────── */
+function render(){
+  runTeardown();
+  const root=document.getElementById("root");
+  root.innerHTML="";
+  if(state.screen==="settings")root.appendChild(renderSettings());
+  else if(state.screen==="form")root.appendChild(renderForm());
+  else if(state.screen==="relpanel"&&state.sel){
+    const char=state.chars.find(c=>c.id===state.sel.id)||state.sel;
+    root.appendChild(renderRelPanel(char));
+  }
+  else if(state.screen==="profile"&&state.sel){
+    const char=state.chars.find(c=>c.id===state.sel.id)||state.sel;
+    root.appendChild(renderProfile(char));
+  }
+  else if(state.screen==="chat"&&state.sel){
+    const char=state.chars.find(c=>c.id===state.sel.id)||state.sel;
+    root.appendChild(renderChat(char));
+  }else root.appendChild(renderHome());
+}
+
+
+/* ─── INSTAGRAM THEME ─────────────────────────────────────── */
+// Override C with IG palette
+Object.assign(C,{
+  bg:"#000000", s1:"#0a0a0a", s2:"#111111", s3:"#1a1a1a", s4:"#222222",
+  border:"#1e1e1e", accent:"#c13584", accent2:"#e1306c", text:"#f5f5f5",
+  muted:"#8e8e8e", muted2:"#3a3a3a", green:"#22c55e", red:"#ed4956", amber:"#f59e0b",
+  ig1:"#833ab4", ig2:"#fd1d1d", ig3:"#fcb045",
+});
+const IG_GRAD = "linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)";
+const IG_GRAD2 = "linear-gradient(135deg,#405de6,#5851db,#833ab4,#c13584,#e1306c,#fd1d1d)";
+
+/* ─── NEW FEATURES STATE ──────────────────────────────────── */
+// Reactions: {msgId: emoji}
+// Read receipts: {msgId: true}
+// Voice messages: synthetic waveform bubbles
+// Unread counts per char
+// Typing sounds (optional)
+
+function getReactions(){return Store.get("reactions")||{}}
+function setReactions(v){Store.set("reactions",v)}
+function getReadBy(){return Store.get("readby")||{}}
+function setReadBy(v){Store.set("readby",v)}
+function getUnread(){return Store.get("unread")||{}}
+function setUnread(v){Store.set("unread",v)}
+
+const REACTIONS = ["❤️","😂","😮","😢","😡","👍","🔥","😍"];
+
+/* ─── IG SHARED UI ────────────────────────────────────────── */
+function IGAvatar(char, size=44, showRing=false){
+  const wrap = el("div",{style:{position:"relative",flexShrink:"0",width:size+"px",height:size+"px"}});
+  const inner = el("div",{style:{
+    width:size+"px", height:size+"px", borderRadius:"50%", padding: showRing?"2px":"0",
+    background: showRing ? IG_GRAD : "transparent", flexShrink:"0",
+  }});
+  if(char?.avatar?.type==="image"&&char.avatar.url){
+    const img = el("img",{src:char.avatar.url,alt:"",style:{
+      width:(showRing?size-4:size)+"px", height:(showRing?size-4:size)+"px",
+      borderRadius:"50%", objectFit:"cover", display:"block",
+      border: showRing ? "2px solid #000" : "none",
+    }});
+    inner.appendChild(img);
+  } else {
+    const av = (char?.avatar?.type==="initials"?char.avatar:null)||initAv(char?.name||"?");
+    const d = el("div",{style:{
+      width:(showRing?size-4:size)+"px", height:(showRing?size-4:size)+"px",
+      borderRadius:"50%", background:av.color,
+      display:"flex",alignItems:"center",justifyContent:"center",
+      color:"#fff", fontWeight:"700", fontSize:Math.round(size*.36)+"px",
+      border: showRing ? "2px solid #000" : "none",
+    }}, av.text);
+    inner.appendChild(d);
+  }
+  wrap.appendChild(inner);
+  return wrap;
+}
+
+function IGBtn(text, gradient=false, small=false){
+  return el("button",{style:{
+    background: gradient ? IG_GRAD : "transparent",
+    border: gradient ? "none" : "1.5px solid #333",
+    borderRadius:"8px", padding: small?"7px 16px":"10px 22px",
+    color:"#fff", fontSize: small?"13px":"14px", fontWeight:"600",
+    cursor:"pointer", transition:"opacity .15s",
+  }}, text);
+}
+
+/* ─── HOME (Instagram DM style) ──────────────────────────── */
+function renderHome(){
+  const unread = getUnread();
+
+  const hdr = el("div",{style:{
+    padding:"16px 18px 12px", display:"flex", alignItems:"center",
+    justifyContent:"space-between", flexShrink:"0",
+    borderBottom:`1px solid ${C.border}`, background:C.bg,
+  }},
+    el("div",{style:{display:"flex",alignItems:"center",gap:"10px"}},
+      el("span",{style:{
+        fontSize:"22px", fontWeight:"800", color:C.text,
+        background:IG_GRAD, WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+      }},"Mensajes"),
+    ),
+    el("div",{style:{display:"flex",gap:"6px",alignItems:"center"}},
+      icoBtn("⚙️","Configuración",()=>nav("settings")),
+      el("button",{
+        style:{
+          background:IG_GRAD, border:"none", borderRadius:"50%",
+          width:"34px", height:"34px", color:"#fff", fontSize:"22px",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          boxShadow:"0 2px 12px rgba(193,53,132,.5)",
+        },
+        onClick:()=>{state.editing=null;nav("form")}
+      },"+")
+    )
+  );
+
+  // ── Notes row (estilo Instagram Notes) ────────────────────
+  const notesRow = el("div",{style:{
+    display:"flex", gap:"18px", padding:"14px 18px 6px",
+    overflowX:"auto", flexShrink:"0", background:C.bg,
+    borderBottom: state.chars.length ? "none" : `1px solid ${C.border}`,
+    paddingBottom: state.chars.length ? "6px" : "14px",
+  }});
+  notesRow.style.cssText += ";scrollbar-width:none;-ms-overflow-style:none;";
+
+  function noteBubble(text){
+    return el("div",{style:{
+      background:C.s3, color:C.text, fontSize:"11px", fontWeight:"500",
+      padding:"6px 10px", borderRadius:"14px", whiteSpace:"nowrap",
+      maxWidth:"110px", overflow:"hidden", textOverflow:"ellipsis",
+      border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,.4)",
+      position:"relative",
+    }},
+      text,
+      el("div",{style:{
+        position:"absolute", bottom:"-5px", left:"50%", transform:"translateX(-50%) rotate(45deg)",
+        width:"9px", height:"9px", background:C.s3,
+        borderRight:`1px solid ${C.border}`, borderBottom:`1px solid ${C.border}`,
+      }})
+    );
+  }
+
+  function noteItem(entity,note,isUser,onClick){
+    const item=el("div",{style:{
+      display:"flex",flexDirection:"column",alignItems:"center",gap:"5px",
+      cursor:"pointer",flexShrink:"0",
+    }});
+    // Burbuja de nota encima del avatar, en flujo normal (no absolute)
+    // para que no se recorte con el scroll horizontal de la fila.
+    const bubbleSlot=el("div",{style:{height:"30px",display:"flex",alignItems:"flex-end",justifyContent:"center",marginBottom:"2px"}});
+    if(note) bubbleSlot.appendChild(noteBubble(note.text));
+    item.appendChild(bubbleSlot);
+    item.appendChild(isUser?makeAv({name:"Tú",avatar:state.cfg.userAvatar},58):IGAvatar(entity,58,false));
+    item.appendChild(el("span",{style:{
+      fontSize:"11px", color:C.muted, maxWidth:"64px", overflow:"hidden",
+      textOverflow:"ellipsis", whiteSpace:"nowrap", textAlign:"center",
+    }}, isUser?"Tu nota":entity.name));
+    item.addEventListener("click",onClick);
+    return item;
+  }
+
+  // Nota propia del usuario (siempre primero, permite crear/editar)
+  const myNote=getLatestNote("user");
+  notesRow.appendChild(noteItem(null,myNote,true,()=>{
+    if(myNote) openNoteViewer(null,myNote,true);
+    else openNoteComposer();
+  }));
+
+  // Notas activas de cada personaje
+  for(const c of state.chars){
+    const note=getLatestNote(c.id);
+    if(!note)continue;
+    notesRow.appendChild(noteItem(c,note,false,()=>openNoteViewer(c,note,false)));
+  }
+
+  // ── Refresco periódico de la fila de notas ────────────────
+  // Las notas se generan en background (tickNotes, cada 30s) aunque
+  // el usuario se quede en home — refrescamos esta fila sola para
+  // que aparezcan sin tener que navegar.
+  const notesRefresh=setInterval(()=>{
+    const fresh=el("div");
+    fresh.style.cssText=notesRow.style.cssText;
+    const myNote2=getLatestNote("user");
+    fresh.appendChild(noteItem(null,myNote2,true,()=>{
+      if(myNote2) openNoteViewer(null,myNote2,true);
+      else openNoteComposer();
+    }));
+    for(const c of state.chars){
+      const note=getLatestNote(c.id);
+      if(!note)continue;
+      fresh.appendChild(noteItem(c,note,false,()=>openNoteViewer(c,note,false)));
+    }
+    notesRow.innerHTML="";
+    while(fresh.firstChild)notesRow.appendChild(fresh.firstChild);
+  },15000);
+  registerTeardown(()=>clearInterval(notesRefresh));
+
+  // Stories row (avatars of all characters)
+  const storiesRow = el("div",{style:{
+    display:"flex", gap:"16px", padding:"14px 18px",
+    overflowX:"auto", borderBottom:`1px solid ${C.border}`,
+    flexShrink:"0", background:C.bg,
+  }});
+  storiesRow.style.cssText += ";scrollbar-width:none;-ms-overflow-style:none;";
+
+  // Get story data
+  const activeStories = getActiveStories();
+  const seenStories = getSeenStories();
+  const cfStatus = getCFStatus();
+
+  // Chars with at least one visible story
+  const charsWithStories = state.chars.filter(c=>getCharStories(c.id).length>0);
+
+  for(const c of state.chars){
+    const charStories = getCharStories(c.id);
+    const hasStories = charStories.length > 0;
+    const allSeen = hasStories && charStories.every(s=>seenStories[s.id]);
+    const hasCFStory = hasStories && charStories.some(s=>s.isCF);
+    const hasNew = (unread[c.id]||0) > 0;
+
+    const storyWrap = el("div",{style:{
+      display:"flex", flexDirection:"column", alignItems:"center",
+      gap:"5px", cursor:"pointer", flexShrink:"0",
+    }});
+
+    // Ring wrapper
+    let ringEl;
+    if(hasStories){
+      ringEl = document.createElement("div");
+      ringEl.style.cssText = "border-radius:50%;padding:2.5px;flex-shrink:0;width:63px;height:63px;display:flex;align-items:center;justify-content:center";
+      if(hasCFStory && !allSeen)
+        ringEl.style.background = "linear-gradient(135deg,#22c55e,#16a34a)";
+      else if(!allSeen)
+        ringEl.style.background = "linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)";
+      else
+        ringEl.style.background = "#333";
+      const avInner = document.createElement("div");
+      avInner.style.cssText = "border-radius:50%;border:2px solid #000;overflow:hidden;width:54px;height:54px;display:flex;align-items:center;justify-content:center";
+      const avEl = IGAvatar(c,50,false);
+      avInner.appendChild(avEl);
+      ringEl.appendChild(avInner);
+      storyWrap.appendChild(ringEl);
+    } else {
+      storyWrap.appendChild(IGAvatar(c, 58, hasNew));
+    }
+
+    storyWrap.appendChild(el("span",{style:{
+      fontSize:"11px", color: (hasStories&&!allSeen) ? C.text : C.muted,
+      maxWidth:"60px", overflow:"hidden", textOverflow:"ellipsis",
+      whiteSpace:"nowrap", textAlign:"center", fontWeight:(hasStories&&!allSeen)?"600":"400",
+    }}, c.name));
+
+    storyWrap.addEventListener("click",()=>{
+      if(hasStories){
+        const idx = charsWithStories.indexOf(c);
+        openStoryViewer(charsWithStories, Math.max(0,idx));
+      } else {
+        const nu={...unread};nu[c.id]=0;setUnread(nu);
+        nav("chat",c);
+      }
+    });
+    storiesRow.appendChild(storyWrap);
+  }
+
+  // "New" button in stories
+  if(state.chars.length===0){
+    const newStory = el("div",{style:{
+      display:"flex",flexDirection:"column",alignItems:"center",gap:"5px",cursor:"pointer",flexShrink:"0"
+    }});
+    const circle = el("div",{style:{
+      width:"58px",height:"58px",borderRadius:"50%",
+      border:"1.5px dashed #444", display:"flex",alignItems:"center",
+      justifyContent:"center",fontSize:"26px",color:"#444",
+    }},"+");
+    newStory.appendChild(circle);
+    newStory.appendChild(el("span",{style:{fontSize:"11px",color:C.muted}}, "Nuevo"));
+    newStory.addEventListener("click",()=>{state.editing=null;nav("form")});
+    storiesRow.appendChild(newStory);
+  }
+
+  const list = el("div",{style:{flex:"1",overflowY:"auto"}});
+
+  if(!state.chars.length){
+    list.appendChild(el("div",{style:{
+      display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      gap:"16px",padding:"60px 20px",color:C.muted,
+    }},
+      el("div",{style:{
+        width:"80px",height:"80px",borderRadius:"50%",
+        background:IG_GRAD, display:"flex",alignItems:"center",
+        justifyContent:"center",fontSize:"36px",
+      }},"💬"),
+      el("p",{style:{fontSize:"18px",color:C.text,fontWeight:"700",margin:"0"}},"Sin conversaciones"),
+      el("p",{style:{fontSize:"13px",margin:"0",textAlign:"center",lineHeight:"1.5",maxWidth:"240px"}},
+        "Crea tu primer personaje y empieza a chatear"),
+      IGBtn("Crear personaje",true)
+    ));
+    list.querySelector("button").addEventListener("click",()=>{state.editing=null;nav("form")});
+  } else {
+    for(const c of state.chars){
+      const prov = PROVIDERS[c.providerId||DEF_PROVIDER];
+      const msgs = state.chats[c.id]||[];
+      const lastMsg = msgs.slice(-1)[0];
+      const unreadCount = unread[c.id]||0;
+      const preview = lastMsg?.content?.type==="media"
+        ? (lastMsg.role==="assistant"?"📷 Foto":"📷 Tu foto")
+        : (lastMsg?.content?.text?.slice(0,45)||"Sin mensajes aún");
+      const isRecent = lastMsg && (Date.now()-lastMsg.ts)<60000;
+
+      const row = el("div",{style:{
+        display:"flex",alignItems:"center",gap:"13px",
+        padding:"11px 18px",cursor:"pointer",
+        borderBottom:`1px solid ${C.border}`,
+        transition:"background .1s", position:"relative",
+      }},
+        IGAvatar(c, 54, unreadCount>0),
+        el("div",{style:{flex:"1",minWidth:"0"}},
+          el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"2px"}},
+            el("span",{style:{fontWeight: unreadCount?"700":"500", fontSize:"15px",color:C.text}}, c.name),
+            el("div",{style:{display:"flex",alignItems:"center",gap:"6px"}},
+              lastMsg ? el("span",{style:{fontSize:"11px",color:unreadCount?C.text:C.muted}},
+                formatTime(lastMsg.ts)) : null,
+            )
+          ),
+          el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between"}},
+            el("span",{style:{
+              fontSize:"13px",
+              color: unreadCount ? C.text : C.muted,
+              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+              maxWidth:"220px", fontWeight: unreadCount?"500":"400",
+            }}, preview),
+            unreadCount ? el("div",{style:{
+              background:IG_GRAD, borderRadius:"50%",
+              minWidth:"18px",height:"18px",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:"11px",color:"#fff",fontWeight:"700",padding:"0 4px",
+              flexShrink:"0",
+            }}, unreadCount>9?"9+":String(unreadCount)) : null
+          )
+        )
+      );
+      row.addEventListener("click",()=>{
+        const nu={...unread};nu[c.id]=0;setUnread(nu);
+        nav("chat",c);
+      });
+      row.addEventListener("mouseenter",()=>row.style.background=C.s2);
+      row.addEventListener("mouseleave",()=>row.style.background="transparent");
+      list.appendChild(row);
+    }
+  }
+
+  return Wrap(hdr, notesRow, state.chars.length ? storiesRow : el("div"), list);
+}
+
+function formatTime(ts){
+  if(!ts)return"";
+  const d=new Date(ts), now=new Date();
+  const diff = now-d;
+  if(diff<60000) return "ahora";
+  if(diff<3600000) return Math.floor(diff/60000)+"min";
+  if(d.toDateString()===now.toDateString()) return d.getHours().toString().padStart(2,"0")+":"+d.getMinutes().toString().padStart(2,"0");
+  return d.getDate()+"/"+(d.getMonth()+1);
+}
+
+/* ─── SETTINGS ────────────────────────────────────────────── */
+const HELP_TEXT=`GROQ — 100% GRATIS, sin tarjeta
+━━━━━━━━━━━━━━━━━━
+1. Abre console.groq.com
+2. Crea cuenta (Google o email)
+3. API Keys → Create API Key
+4. Copia la key (empieza con gsk_)
+5. Pégala aquí y guarda
+
+Modelos recomendados:
+• Llama 4 Scout — rápido, libre
+• Llama 4 Maverick — más potente
+
+GEMINI — GRATIS con límites
+━━━━━━━━━━━━━━━━━━
+1. aistudio.google.com
+2. Get API key → Create API key
+3. Copia (empieza con AIza)
+
+CLAUDE — Sin key propia necesaria
+━━━━━━━━━━━━━━━━━━
+Funciona directamente en esta app.
+console.anthropic.com para más tokens`;
+
+function renderSettings(){
+  let cfg={...state.cfg,apiKeys:{...(state.cfg.apiKeys||{})}};
+  let section="models";
+  const body=el("div",{style:{flex:"1",overflowY:"auto",padding:"16px 18px",display:"flex",flexDirection:"column",gap:"0"}});
+  let showHelp=false;
+
+  const sections=["models","appearance","privacy","info"];
+  const sLabels={models:"🤖 Modelos",appearance:"🎨 Apariencia",privacy:"🔒 Privacidad",info:"ℹ️ Info"};
+
+  function navBtns(){
+    const wrap=el("div",{style:{display:"flex",gap:"6px",flexWrap:"wrap",marginBottom:"18px"}});
+    for(const s of sections){
+      const active=section===s;
+      const b=el("button",{style:{
+        padding:"7px 14px",borderRadius:"20px",border:"1.5px solid",fontSize:"12px",fontWeight:"600",transition:"all .1s",
+        background:active?"transparent":"transparent",
+        borderColor:active?"transparent":"#333",
+        color:active?"#fff":C.muted,
+        backgroundImage:active?IG_GRAD:"none",
+        backgroundClip:active?"padding-box":"none",
+      }},sLabels[s]);
+      if(active){b.style.background=IG_GRAD;b.style.border="none";}
+      b.addEventListener("click",()=>{section=s;rebuild()});
+      wrap.appendChild(b);
+    }
+    return wrap;
+  }
+
+  function renderModels(){
+    const wrap=el("div",{style:{display:"flex",flexDirection:"column",gap:"12px"}});
+    const helpPanel=el("div",{style:{background:C.s2,border:`1px solid #833ab444`,borderRadius:"12px",padding:"14px",fontSize:"12px",color:"#ccc",lineHeight:"1.7",display:showHelp?"block":"none",marginBottom:"4px"}});
+    helpPanel.appendChild(el("pre",{style:{whiteSpace:"pre-wrap",fontFamily:"inherit",margin:"0",fontSize:"11px"}},HELP_TEXT));
+    const helpRow=el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.s2,borderRadius:"11px",padding:"11px 14px",marginBottom:"4px"}},
+      el("div",{},
+        el("div",{style:{fontWeight:"600",fontSize:"13px",color:C.text}},"¿Cómo obtener una API key?"),
+        el("div",{style:{fontSize:"11px",color:C.muted,marginTop:"2px"}},"Groq y Gemini son 100% gratuitos")),
+      el("button",{style:{background:C.s3,border:`1px solid ${C.border}`,borderRadius:"50%",width:"30px",height:"30px",color:"#bbb",fontSize:"14px",fontWeight:"700",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:"0"},title:"Ayuda",onClick:()=>{showHelp=!showHelp;rebuild();}},"?")
+    );
+    wrap.appendChild(helpRow);
+    if(showHelp)wrap.appendChild(helpPanel);
+    for(const[pid,p]of Object.entries(PROVIDERS)){
+      const keyInp=el("input",{type:"password",placeholder:"API Key...",style:{...INP,fontSize:"13px",padding:"9px 12px",fontFamily:"monospace"}});
+      keyInp.value=cfg.apiKeys[pid]||"";
+      keyInp.addEventListener("input",e=>{cfg.apiKeys[pid]=e.target.value.trim()});
+      const connected=!!(cfg.apiKeys[pid]);
+      wrap.appendChild(el("div",{style:{background:C.s2,borderRadius:"13px",padding:"13px"}},
+        el("div",{style:{display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px"}},
+          el("span",{style:{fontSize:"16px"}},p.emoji),
+          el("div",{style:{flex:"1"}},
+            el("div",{style:{fontWeight:"600",fontSize:"14px",color:C.text}},p.name),
+            el("div",{style:{fontSize:"11px",color:C.muted}},p.keyHint)
+          ),
+          p.freeNote?el("span",{style:{fontSize:"10px",color:C.green,background:C.green+"18",borderRadius:"7px",padding:"2px 7px"}},p.freeNote):null,
+          connected?el("span",{style:{fontSize:"10px",color:C.green,background:C.green+"18",borderRadius:"7px",padding:"2px 7px"}},"✓ activo"):null
+        ),
+        pid==="claude"?el("div",{style:{fontSize:"11px",color:C.muted,marginBottom:"8px"}},"Claude funciona sin key. Pega una si tienes para más tokens."):null,
+        lbl("API Key"),keyInp
+      ));
+    }
+    return wrap;
+  }
+
+  function renderAppearance(){
+    let bc=cfg.bubbleColor||C.accent;
+    let dens=cfg.chatDensity||"normal";
+    let igMode=cfg.igBubbles!==false;
+    const cp=el("input",{type:"color",value:bc,style:{width:"44px",height:"36px",border:"none",background:"none",cursor:"pointer",borderRadius:"8px",padding:"2px"}});
+    cp.addEventListener("input",e=>{bc=e.target.value;cfg.bubbleColor=bc});
+    const densRow=el("div",{style:{display:"flex",gap:"8px"}});
+    for(const[v,lab]of[["compact","Compacto"],["normal","Normal"],["spacious","Amplio"]]){
+      const b=el("button",{style:{flex:"1",padding:"9px",borderRadius:"10px",border:"1.5px solid",fontSize:"13px",background:dens===v?C.s3:C.s2,borderColor:dens===v?"#833ab4":"#333",color:dens===v?C.text:C.muted}},lab);
+      b.addEventListener("click",()=>{dens=v;cfg.chatDensity=v;rebuild()});
+      densRow.appendChild(b);
+    }
+    const igToggle=el("button",{style:{
+      width:"46px",height:"26px",borderRadius:"13px",border:"none",cursor:"pointer",
+      background:igMode?IG_GRAD:"#333",transition:"background .2s",flexShrink:"0",
+    }});
+    igToggle.addEventListener("click",()=>{igMode=!igMode;cfg.igBubbles=igMode;rebuild()});
+    return el("div",{style:{display:"flex",flexDirection:"column",gap:"18px"}},
+      el("div",{},lbl("Color de tus mensajes"),el("div",{style:{display:"flex",alignItems:"center",gap:"12px"}},cp,el("span",{style:{fontSize:"13px",color:C.muted}},"Color de burbujas"))),
+      el("div",{},lbl("Densidad del chat"),densRow),
+      el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",background:C.s2,borderRadius:"12px",padding:"12px 14px"}},
+        el("div",{},el("div",{style:{fontWeight:"600",fontSize:"14px",color:C.text}},"Estilo Instagram"),el("div",{style:{fontSize:"12px",color:C.muted,marginTop:"2px"}},"Burbujas y efectos IG")),
+        igToggle)
+    );
+  }
+
+  function renderPrivacy(){
+    const clrBtn=el("button",{style:{background:C.red+"18",border:`1px solid ${C.red}33`,borderRadius:"12px",padding:"12px 16px",color:C.red,fontSize:"14px",width:"100%"}},"🗑️ Borrar todos los chats");
+    clrBtn.addEventListener("click",()=>{if(confirm("¿Borrar todos los chats?"))saveChats({})});
+    const expBtn=el("button",{style:{background:C.s2,border:`1px solid ${C.border}`,borderRadius:"12px",padding:"12px 16px",color:C.text,fontSize:"14px",width:"100%",marginTop:"8px"}},"📤 Exportar datos");
+    expBtn.addEventListener("click",()=>{
+      const d={chars:state.chars,chats:state.chats,cfg:state.cfg,ts:new Date().toISOString()};
+      const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:"application/json"}));a.download="aichat-backup.json";a.click();
+    });
+    const impInp=el("input",{type:"file",accept:".json",style:{display:"none"}});
+    const impBtn=el("button",{style:{background:C.s2,border:`1px solid ${C.border}`,borderRadius:"12px",padding:"12px 16px",color:C.text,fontSize:"14px",width:"100%",marginTop:"8px"}},"📥 Importar datos");
+    impBtn.addEventListener("click",()=>impInp.click());
+    impInp.addEventListener("change",async e=>{
+      const f=e.target.files[0];if(!f)return;
+      try{const d=JSON.parse(await f.text());if(d.chars)saveChars(d.chars);if(d.chats)saveChats(d.chats);if(d.cfg)saveCfg(d.cfg);alert("Importado ✓");render();}
+      catch{alert("Error al importar");}
+    });
+    return el("div",{},clrBtn,expBtn,impInp,impBtn);
+  }
+
+  function renderInfo(){
+    return el("div",{style:{background:C.s2,borderRadius:"13px",padding:"16px",fontSize:"13px",color:"#ccc",lineHeight:"1.8"}},
+      el("b",{style:{color:"#a78bfa"}},"🤖 Motores recomendados"),
+      el("p",{style:{margin:"8px 0"}},"• Groq — Llama 4 Scout (rápido, gratis)\n• Claude Sonnet 4 (multimodal)\n• Gemini 2.5 Flash (gratis con límites)"),
+      el("hr",{style:{margin:"10px 0",border:"none",borderTop:`1px solid ${C.border}`}}),
+      el("b",{style:{color:"#a78bfa"}},"🏷️ Sistema de etiquetas"),
+      el("p",{style:{margin:"8px 0"}},"La IA lee etiquetas y elige cuándo enviar cada archivo por contexto. Usa tags como: selfie, íntima, playa, gym, etc."),
+      el("hr",{style:{margin:"10px 0",border:"none",borderTop:`1px solid ${C.border}`}}),
+      el("b",{style:{color:"#a78bfa"}},"📱 Instalar en móvil"),
+      el("p",{style:{margin:"8px 0"}},"Chrome Android → Menú ⋮ → Añadir a pantalla inicio"),
+      el("hr",{style:{margin:"10px 0",border:"none",borderTop:`1px solid ${C.border}`}}),
+      el("b",{style:{color:"#a78bfa"}},"🐙 GitHub Pages"),
+      el("p",{style:{margin:"8px 0"}},"1. Crea repositorio en github.com\n2. Sube index.html\n3. Settings → Pages → Deploy from branch (main)\n4. Accede en username.github.io/repo")
+    );
+  }
+
+  function rebuild(){
+    body.innerHTML="";
+    body.appendChild(navBtns());
+    if(section==="models")body.appendChild(renderModels());
+    else if(section==="appearance")body.appendChild(renderAppearance());
+    else if(section==="privacy")body.appendChild(renderPrivacy());
+    else body.appendChild(renderInfo());
+  }
+  rebuild();
+
+  return Wrap(
+    hdrBar(ghostBtn("← Atrás",()=>nav("home")),"Configuración",
+      ghostBtn("Guardar",()=>{saveCfg(cfg);nav("home")},{fontWeight:"700"})),
+    body
+  );
+}
+
+/* ─── CHARACTER FORM ──────────────────────────────────────── */
+function renderForm(){
+  const char=state.editing;
+  let name=char?.name||"",pers=char?.personality||"",opener=char?.opener||"",mood=char?.mood||"";
+  let emojiLevel = char?.emojiLevel!=null ? char.emojiLevel : 40;
+  let typoLevel = char?.typoLevel!=null ? char.typoLevel : 20;
+  let capsStyle = char?.capsStyle || "normal";
+  let archetype = char?.archetype || "";
+  let region = char?.region || "";
+  let avUrl=char?.avatar?.url||"";
+  let media=[...(char?.media||[])];
+  let charPid=char?.providerId||DEF_PROVIDER;
+  let charMid=char?.modelId||DEF_MODELS[charPid];
+  const busyIds=new Set();
+
+  const avRef=el("input",{type:"file",accept:"image/*",style:{display:"none"}});
+  const medRef=el("input",{type:"file",accept:"image/*,video/*",multiple:"",style:{display:"none"}});
+
+  const nameInp=el("input",{placeholder:"Nombre del personaje",style:INP});nameInp.value=name;nameInp.addEventListener("input",e=>name=e.target.value);
+  const persInp=el("textarea",{rows:"4",placeholder:"Personalidad, forma de hablar, contexto…\nEj: Eres Luna, 22 años, extrovertida y cariñosa.",style:{...INP,lineHeight:"1.55"}});persInp.value=pers;persInp.addEventListener("input",e=>pers=e.target.value);
+  const openerInp=el("input",{placeholder:"Primer mensaje (vacío = se genera solo)",style:INP});openerInp.value=opener;openerInp.addEventListener("input",e=>opener=e.target.value);
+  const moodInp=el("input",{placeholder:"Estado de ánimo actual (opcional)",style:INP});moodInp.value=mood;moodInp.addEventListener("input",e=>mood=e.target.value);
+
+  // ── Sliders: nivel de autonomía y nivel de coqueteo ──
+  let autonomy = char?.autonomy!=null ? char.autonomy : 50;
+  let flirt = char?.flirt!=null ? char.flirt : 30;
+
+  function makeSlider(initial, leftLbl, rightLbl, onChange){
+    const wrap=el("div",{style:{display:"flex",flexDirection:"column",gap:"6px"}});
+    const valLbl=el("span",{style:{fontSize:"11px",color:C.muted,fontWeight:"600"}});
+    const range=el("input",{type:"range",min:"0",max:"100",step:"1",style:{width:"100%",accentColor:"#833ab4"}});
+    range.value=String(initial);
+    function refreshLbl(){ valLbl.textContent = range.value+"%"; }
+    refreshLbl();
+    range.addEventListener("input",e=>{ onChange(parseInt(e.target.value,10)); refreshLbl(); });
+    const row=el("div",{style:{display:"flex",justifyContent:"space-between",fontSize:"10px",color:C.muted}},
+      el("span",{},leftLbl), valLbl, el("span",{},rightLbl)
+    );
+    wrap.appendChild(row); wrap.appendChild(range);
+    wrap.setValue=(v)=>{ range.value=String(v); refreshLbl(); };
+    return wrap;
+  }
+
+  const autonomySlider = makeSlider(autonomy, "Complaciente", "Independiente", v=>autonomy=v);
+  const flirtSlider = makeSlider(flirt, "Reservado/a", "Coqueto/a", v=>flirt=v);
+  const emojiSlider = makeSlider(emojiLevel, "Casi sin emojis", "Muchos emojis", v=>emojiLevel=v);
+  const typoSlider = makeSlider(typoLevel, "Ortografía prolija", "Typos frecuentes", v=>typoLevel=v);
+
+  // Selector de estilo de mayúsculas
+  const capsWrap=el("div",{style:{display:"flex",gap:"7px"}});
+  function buildCapsBtns(){
+    capsWrap.innerHTML="";
+    const opts=[["normal","Aa Normal"],["lower","todo minúscula"]];
+    for(const[val,label]of opts){
+      const active=capsStyle===val;
+      const b=el("button",{style:{
+        flex:"1",padding:"9px 10px",borderRadius:"9px",fontSize:"12px",fontWeight:"600",cursor:"pointer",
+        background:active?C.s3:C.s2,border:active?"1.5px solid #833ab488":`1.5px solid ${C.border}`,
+        color:active?"#e879f9":C.muted,
+      }},label);
+      b.addEventListener("click",()=>{capsStyle=val;buildCapsBtns();});
+      capsWrap.appendChild(b);
+    }
+  }
+  buildCapsBtns();
+
+  // Selector de región / modismos
+  const REGION_OPTS=[["","Sin región específica"],["mx","🇲🇽 México"],["ar","🇦🇷 Argentina"],["es","🇪🇸 España"],["co","🇨🇴 Colombia"],["cl","🇨🇱 Chile"],["pe","🇵🇪 Perú"],["ve","🇻🇪 Venezuela"]];
+  const regionWrap=el("div",{style:{display:"flex",flexWrap:"wrap",gap:"6px"}});
+  function buildRegionBtns(){
+    regionWrap.innerHTML="";
+    for(const[val,label]of REGION_OPTS){
+      const active=region===val;
+      const b=el("button",{style:{
+        padding:"7px 12px",borderRadius:"16px",fontSize:"12px",fontWeight:"600",cursor:"pointer",
+        background:active?"#833ab422":C.s2,border:active?"1.5px solid #833ab488":`1.5px solid ${C.border}`,
+        color:active?"#e879f9":C.muted,
+      }},label);
+      b.addEventListener("click",()=>{region=val;buildRegionBtns();});
+      regionWrap.appendChild(b);
+    }
+  }
+  buildRegionBtns();
+
+  // Selector de arquetipo: aplica un combo coherente de campos con un click
+  const archWrap=el("div",{style:{display:"flex",flexWrap:"wrap",gap:"6px"}});
+  function buildArchBtns(){
+    archWrap.innerHTML="";
+    for(const[key,a]of Object.entries(ARCHETYPES)){
+      const active=archetype===key;
+      const b=el("button",{style:{
+        display:"flex",alignItems:"center",gap:"6px",padding:"8px 12px",borderRadius:"20px",fontSize:"12px",fontWeight:"600",cursor:"pointer",
+        background:active?"#833ab422":C.s2,border:active?"1.5px solid #833ab488":`1.5px solid ${C.border}`,
+        color:active?"#e879f9":C.text,
+      }},a.emoji+" "+a.label);
+      b.addEventListener("click",()=>{
+        if(pers.trim() && !confirm(`Esto va a reemplazar la personalidad, ánimo y estilo de escritura actuales con la plantilla "${a.label}". ¿Continuar?`)) return;
+        archetype=key;
+        pers=a.personality; persInp.value=pers;
+        mood=a.mood; moodInp.value=mood;
+        autonomy=a.autonomy; flirt=a.flirt; emojiLevel=a.emojiLevel; typoLevel=a.typoLevel; capsStyle=a.capsStyle;
+        autonomySlider.setValue(autonomy);
+        flirtSlider.setValue(flirt);
+        emojiSlider.setValue(emojiLevel);
+        typoSlider.setValue(typoLevel);
+        buildCapsBtns(); buildArchBtns();
+      });
+      archWrap.appendChild(b);
+    }
+  }
+  buildArchBtns();
+
+  // IG-style avatar with gradient ring
+  const avWrap=el("div",{style:{
+    cursor:"pointer", position:"relative",
+    width:"96px", height:"96px",
+    background:IG_GRAD, borderRadius:"50%",
+    padding:"3px", flexShrink:"0",
+  }});
+  function refreshAv(){
+    avWrap.innerHTML="";
+    const inner=el("div",{style:{
+      width:"90px",height:"90px",borderRadius:"50%",
+      overflow:"hidden",background:C.s3,border:"2px solid #000",
+    }});
+    const img=avUrl
+      ?el("img",{src:avUrl,style:{width:"100%",height:"100%",objectFit:"cover"}})
+      :(()=>{const av=initAv(name||"?");return el("div",{style:{width:"100%",height:"100%",background:av.color,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:"700",fontSize:"28px"}},av.text)})();
+    inner.appendChild(img);
+    avWrap.appendChild(inner);
+    avWrap.appendChild(el("div",{style:{
+      position:"absolute",bottom:"2px",right:"2px",
+      background:IG_GRAD,borderRadius:"50%",
+      width:"26px",height:"26px",
+      display:"flex",alignItems:"center",justifyContent:"center",
+      fontSize:"14px",border:"2px solid #000",
+    }},"📷"));
+  }
+  refreshAv();
+  avWrap.addEventListener("click",()=>avRef.click());
+  avRef.addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;avUrl=await readFile(f);e.target.value="";refreshAv()});
+
+  // Provider selector
+  const provArea=el("div",{style:{display:"flex",flexDirection:"column",gap:"10px"}});
+  function rebuildProv(){
+    provArea.innerHTML="";
+    const grid=el("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"7px",marginBottom:"10px"}});
+    for(const[pid,p]of Object.entries(PROVIDERS)){
+      const active=charPid===pid;
+      const b=el("button",{style:{
+        display:"flex",alignItems:"center",gap:"8px",padding:"10px 13px",
+        borderRadius:"11px",cursor:"pointer",transition:"all .12s",textAlign:"left",width:"100%",
+        background:active?C.s3:C.s2,
+        border: active ? "1.5px solid transparent" : `1.5px solid ${C.border}`,
+        backgroundImage: active ? `${IG_GRAD}, linear-gradient(${C.s3},${C.s3})` : "none",
+        backgroundOrigin: active ? "border-box" : "none",
+        backgroundClip: active ? "padding-box, border-box" : "none",
+      }},
+        el("span",{style:{fontSize:"17px"}},p.emoji),
+        el("div",{style:{flex:"1"}},
+          el("div",{style:{fontWeight:"600",fontSize:"12px",color:C.text}},p.name),
+          el("div",{style:{fontSize:"10px",color:C.muted}},p.freeNote||"")
+        )
+      );
+      b.addEventListener("click",()=>{charPid=pid;charMid=DEF_MODELS[pid];rebuildProv()});
+      grid.appendChild(b);
+    }
+    provArea.appendChild(grid);
+    const p=PROVIDERS[charPid];
+    const hasKey=!!getKey(charPid);
+    if(!hasKey&&charPid!=="claude"){
+      provArea.appendChild(el("div",{style:{background:C.amber+"18",border:`1px solid ${C.amber}33`,borderRadius:"10px",padding:"9px 12px",fontSize:"12px",color:"#fcd34d",marginBottom:"6px"}},
+        `⚠️ Sin API key de ${p.name}. Agrégala en ⚙️ → Modelos.`));
+    }
+    const mdls=el("div",{style:{display:"flex",flexDirection:"column",gap:"3px",background:C.s2,borderRadius:"11px",padding:"8px"}});
+    for(const m of p.models){
+      const isAct=charMid===m.id;
+      const b=el("button",{style:{display:"flex",alignItems:"center",gap:"10px",width:"100%",padding:"9px 12px",borderRadius:"8px",border:"none",cursor:"pointer",background:isAct?p.color+"18":"transparent",textAlign:"left",transition:"background .1s"}},
+        el("div",{style:{flex:"1"}},
+          el("div",{style:{fontWeight:"600",fontSize:"13px",color:C.text}},m.label),
+          el("div",{style:{fontSize:"11px",color:C.muted}},m.desc)
+        ),
+        badge(m.badge,p.color)
+      );
+      b.addEventListener("click",()=>{charMid=m.id;rebuildProv()});
+      mdls.appendChild(b);
+    }
+    provArea.appendChild(mdls);
+  }
+  rebuildProv();
+
+  // Media list with tag editor
+  const mediaList=el("div",{style:{display:"flex",flexDirection:"column",gap:"10px"}});
+
+  function makeTagEditor(mItem,onChange){
+    const wrap=el("div",{style:{marginTop:"6px"}});
+    function parseTags(s){return(s||"").split(",").map(t=>t.trim()).filter(Boolean)}
+    function serTags(a){return a.join(", ")}
+    let cur=parseTags(mItem.tags);
+    const custInp=el("input",{placeholder:"+ custom (Enter)",style:{background:"transparent",border:"none",color:C.muted,fontSize:"11px",outline:"none",padding:"2px 0",minWidth:"80px"}});
+    custInp.addEventListener("keydown",e=>{
+      if(e.key==="Enter"||e.key===","){e.preventDefault();
+        const v=custInp.value.trim().replace(/,/g,"");
+        if(v&&!cur.includes(v)){cur=[...cur,v];custInp.value="";refresh();onChange(serTags(cur));}
+      }
+    });
+    function refresh(){
+      wrap.innerHTML="";
+      for(const[catK,cat]of Object.entries(TAG_CATS)){
+        const row=el("div",{style:{display:"flex",flexWrap:"wrap",gap:"4px",marginBottom:"5px"}});
+        row.appendChild(el("span",{style:{fontSize:"10px",color:"#888",minWidth:"40px",paddingTop:"4px",fontWeight:"600",flexShrink:"0"}},cat.label));
+        for(const t of cat.tags){
+          const sel=cur.includes(t);
+          const chip=el("span",{class:`tag-chip ${cat.cls}${sel?" sel":""}`},t);
+          chip.addEventListener("click",()=>{cur=sel?cur.filter(x=>x!==t):[...cur,t];onChange(serTags(cur));refresh()});
+          row.appendChild(chip);
+        }
+        wrap.appendChild(row);
+      }
+      const custom=cur.filter(t=>!Object.values(TAG_CATS).flatMap(c=>c.tags).includes(t));
+      if(custom.length){
+        const row=el("div",{style:{display:"flex",flexWrap:"wrap",gap:"4px",marginBottom:"4px"}});
+        row.appendChild(el("span",{style:{fontSize:"10px",color:"#888",minWidth:"40px",paddingTop:"4px",fontWeight:"600",flexShrink:"0"}},"Extras"));
+        for(const t of custom){
+          const chip=el("span",{class:"tag-chip sel"},t," ",el("span",{style:{opacity:".6",fontSize:"12px"}},"×"));
+          chip.addEventListener("click",()=>{cur=cur.filter(x=>x!==t);onChange(serTags(cur));refresh()});
+          row.appendChild(chip);
+        }
+        wrap.appendChild(row);
+      }
+      wrap.appendChild(el("div",{style:{display:"flex",alignItems:"center",gap:"6px",marginTop:"4px"}},
+        el("span",{style:{fontSize:"10px",color:C.muted,minWidth:"40px",fontWeight:"600",flexShrink:"0"}},"Custom"),custInp
+      ));
+    }
+    refresh();return wrap;
+  }
+
+  function refreshMedia(){
+    mediaList.innerHTML="";
+    for(const m of media){
+      const thumb=m.type==="image"
+        ?el("img",{src:m.url,style:{width:"54px",height:"54px",borderRadius:"8px",objectFit:"cover",flexShrink:"0"}})
+        :el("div",{style:{width:"54px",height:"54px",borderRadius:"8px",background:C.s3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"24px",flexShrink:"0"}},"🎥");
+      const descInp=el("input",{placeholder:"Descripción opcional…",style:{flex:"1",background:"transparent",border:"none",color:C.text,fontSize:"13px",outline:"none",padding:"2px 0"}});
+      descInp.value=m.description||"";
+      descInp.addEventListener("input",e=>{const i=media.findIndex(x=>x.id===m.id);if(i>=0)media[i]={...media[i],description:e.target.value}});
+      const del=el("button",{style:{background:"none",border:"none",color:C.muted,fontSize:"20px",padding:"0",flexShrink:"0",alignSelf:"flex-start"}},"✕");
+      del.addEventListener("click",()=>{media=media.filter(x=>x.id!==m.id);refreshMedia()});
+      const tagEd=makeTagEditor(m,(t)=>{const i=media.findIndex(x=>x.id===m.id);if(i>=0)media[i]={...media[i],tags:t}});
+      mediaList.appendChild(el("div",{style:{background:C.s2,borderRadius:"12px",padding:"10px 12px"}},
+        el("div",{style:{display:"flex",alignItems:"flex-start",gap:"10px"}},thumb,el("div",{style:{flex:"1",minWidth:"0"}},descInp),del),
+        el("div",{style:{marginTop:"8px",borderTop:`1px solid ${C.border}`,paddingTop:"8px"}},tagEd)
+      ));
+    }
+  }
+  refreshMedia();
+
+  medRef.addEventListener("change",async e=>{
+    for(const f of Array.from(e.target.files)){
+      const isVid=f.type.startsWith("video/");
+      const raw=await readFile(f);
+      const url=isVid?raw:await resizeImg(raw);
+      const item={id:uid(),url,type:isVid?"video":"image",name:f.name,description:"",tags:""};
+      media=[...media,item];refreshMedia();
+    }
+    e.target.value="";
+  });
+
+  const addBtn=el("button",{style:{
+    background:"transparent", border:`1.5px dashed #333`,
+    borderRadius:"10px",padding:"11px",color:C.muted,
+    fontSize:"13px",width:"100%",transition:"border-color .12s",
+  }},"+ Añadir imagen / video");
+  addBtn.addEventListener("click",()=>medRef.click());
+  addBtn.addEventListener("mouseenter",()=>addBtn.style.borderColor="#833ab4");
+  addBtn.addEventListener("mouseleave",()=>addBtn.style.borderColor="#333");
+
+  function doSave(){
+    if(!name.trim())return alert("Escribe un nombre.");
+    const saved={
+      id:char?.id||uid(),name:name.trim(),personality:pers.trim(),
+      opener:opener.trim(),mood:mood.trim(),autonomy,flirt,
+      emojiLevel,typoLevel,capsStyle,archetype,region,
+      avatar:avUrl?{type:"image",url:avUrl}:initAv(name),
+      media,providerId:charPid,modelId:charMid,
+    };
+    saveChars(char?state.chars.map(c=>c.id===saved.id?saved:c):[...state.chars,saved]);
+    state.editing=null;
+    nav(char?"chat":"home",char?saved:null);
+  }
+
+  const formBody=el("div",{style:{flex:"1",overflowY:"auto",padding:"18px",display:"flex",flexDirection:"column",gap:"20px"}},
+    avRef,medRef,
+    el("div",{style:{display:"flex",flexDirection:"column",alignItems:"center",gap:"8px",paddingBottom:"4px"}},avWrap,el("span",{style:{fontSize:"12px",color:C.muted}},"Foto de perfil")),
+    el("div",{},lbl("Nombre"),nameInp),
+    el("div",{},lbl("Arquetipo de personalidad (opcional, plantilla rápida)"),archWrap,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"6px",lineHeight:"1.5"}},"Aplica de una sola vez una combinación coherente de personalidad, ánimo y estilo de escritura. Podés seguir editando todo a mano después.")),
+    el("div",{},lbl("Personalidad"),persInp),
+    el("div",{},lbl("Estado de ánimo (opcional)"),moodInp),
+    el("div",{},lbl("Nivel de autonomía"),autonomySlider,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"4px",lineHeight:"1.5"}},"Qué tan dispuesto/a está a seguir pedidos del usuario sin chistar. Bajo = casi siempre accede; alto = decide más por sí mismo/a, duda, pone límites o se niega más seguido.")),
+    el("div",{},lbl("Nivel de coqueteo"),flirtSlider,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"4px",lineHeight:"1.5"}},"Qué tan coqueto/a es su tono en general. Bajo = más reservado/a y formal; alto = más insinuante y cariñoso/a (siempre dentro del personaje, sin volverse explícito).")),
+    el("div",{},lbl("Uso de emojis"),emojiSlider,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"4px",lineHeight:"1.5"}},"Cuántos emojis usa al escribir, en promedio.")),
+    el("div",{},lbl("Frecuencia de typos"),typoSlider,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"4px",lineHeight:"1.5"}},"Qué tan seguido comete (y corrige) errores de tipeo casuales, simulando escribir rápido desde el celular.")),
+    el("div",{},lbl("Estilo de mayúsculas"),capsWrap),
+    el("div",{},lbl("Región / modismos (opcional)"),regionWrap,
+      el("p",{style:{fontSize:"11px",color:C.muted,marginTop:"6px",lineHeight:"1.5"}},"Si elegís una región, el personaje usará modismos y muletillas típicas de esa zona al hablar.")),
+    el("div",{},lbl("Primer mensaje (opcional)"),openerInp),
+    el("div",{},lbl("Motor AI"),provArea),
+    el("div",{},
+      el("div",{style:{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"8px"}},
+        lbl("Galería de medios"),el("span",{style:{fontSize:"11px",color:C.muted}},"IA elige por tags + contexto")),
+      el("p",{style:{fontSize:"12px",color:C.muted,marginBottom:"10px",lineHeight:"1.5"}},"Añade archivos y elige etiquetas. La IA los envía automáticamente según el contexto."),
+      mediaList,el("div",{style:{marginTop:"8px"}},addBtn)
+    )
+  );
+
+  return Wrap(
+    hdrBar(
+      ghostBtn("← Cancelar",()=>{state.editing=null;nav(char?"chat":"home",char||null)}),
+      char?"Editar personaje":"Nuevo personaje",
+      ghostBtn("Guardar",doSave,{fontWeight:"700"})
+    ),
+    formBody
+  );
+}
+
+/* ─── CHAT SCREEN (Instagram DM) ─────────────────────────── */
+function renderChat(char){
+  const cfg=state.cfg;
+  const igMode=cfg.igBubbles!==false;
+  const userColor=cfg.bubbleColor||C.accent;
+  const dens=cfg.chatDensity||"normal";
+  const gap=dens==="compact"?"2px":dens==="spacious"?"10px":"4px";
+
+  let messages=[...(state.chats[char.id]||[])];
+  let loading=false,menuOpen=false,mpOpen=false;
+  let viewed={};
+  let reactions=getReactions();
+  let sPid=char.providerId||DEF_PROVIDER;
+  let sMid=char.modelId||DEF_MODELS[sPid];
+  let sChar={...char,providerId:sPid,modelId:sMid};
+  let isOnline=true;
+  let lastSeenText="visto hace un momento";
+
+  // ── Lifecycle guard ───────────────────────────────────────
+  // Evita que timers/respuestas async de ESTA instancia de chat
+  // sigan escribiendo estado o tocando el DOM tras navegar a
+  // otra pantalla (o re-abrir el mismo chat, p.ej. "Reiniciar chat").
+  let destroyed=false;
+
+  // Expose active chat so jealousy system can inject messages live
+  window.__activeChatId = char.id;
+  window.__activeChatAppend = (msg) => {
+    if(destroyed) return;
+    messages = [...messages, msg];
+    msgArea.appendChild(renderBubble(msg));
+    msgArea.appendChild(bref);
+    bref.scrollIntoView({behavior:"smooth"});
+  };
+
+  // ── Spontaneous message timer ────────────────────────────
+  let spontTimer=null;
+  let lastActivity=Date.now();
+  const SPONT_DELAY_MIN=45000, SPONT_DELAY_MAX=180000;
+
+  // ── "Doble mensaje por las dudas" ──────────────────────────
+  // Si el personaje le escribió algo al usuario y este tarda en
+  // responder, manda UN mensaje corto de seguimiento (como hace la
+  // gente real), distinto del mensaje espontáneo "vida propia".
+  let followUpTimer=null;
+  const FOLLOWUP_DELAY_MIN=50000, FOLLOWUP_DELAY_MAX=140000;
+  const FOLLOWUP_LINES=["?","hola?","sigues ahí?","ahi estas?","me dejaste en visto 😭","jsjs ahi?","oye?","??"];
+
+  function resetFollowUpTimer(){
+    if(followUpTimer)clearTimeout(followUpTimer);
+    if(destroyed)return;
+    const last=messages[messages.length-1];
+    // Solo dispara si el ÚLTIMO mensaje de la conversación fue del bot
+    // (le escribió al usuario y no hubo respuesta todavía).
+    if(!last||last.role!=="assistant")return;
+    const wait=FOLLOWUP_DELAY_MIN+Math.random()*(FOLLOWUP_DELAY_MAX-FOLLOWUP_DELAY_MIN);
+    followUpTimer=setTimeout(()=>{if(!destroyed)fireFollowUp();},wait);
+  }
+
+  async function fireFollowUp(){
+    if(destroyed||loading||document.hidden)return;
+    const last=messages[messages.length-1];
+    if(!last||last.role!=="assistant")return; // el usuario ya respondió, no hace falta
+    if(Math.random()>0.55)return; // no siempre lo hace, sería un tic robótico
+    const line=FOLLOWUP_LINES[Math.floor(Math.random()*FOLLOWUP_LINES.length)];
+    const botMsg={id:uid(),role:"assistant",content:{type:"text",text:line,_followup:true},ts:Date.now()};
+    const final=[...messages,botMsg];
+    saveMsgs(final);
+    if(document.hidden){const nu=getUnread();nu[char.id]=(nu[char.id]||0)+1;setUnread(nu);}
+    msgArea.appendChild(renderBubble(botMsg));
+    msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+  }
+
+  function resetSpontTimer(){
+    if(destroyed)return;
+    lastActivity=Date.now();
+    if(spontTimer)clearTimeout(spontTimer);
+    if(messages.length<1)return;
+    const wait=SPONT_DELAY_MIN+Math.random()*(SPONT_DELAY_MAX-SPONT_DELAY_MIN);
+    spontTimer=setTimeout(()=>{if(!destroyed)fireSpont();},wait);
+  }
+
+  async function fireSpont(){
+    if(destroyed||loading||document.hidden)return;
+    const sentSet=getSentIndices(messages);
+    const pid=sChar.providerId,mid=sChar.modelId,apiKey=getKey(pid);
+    if(!apiKey&&pid!=="claude")return;
+    const hasUnsentMedia=(sChar.media||[]).some((_,i)=>!sentSet.has(i));
+    const withMedia=hasUnsentMedia&&Math.random()<0.35;
+    setLoading(true,"escribiendo…");
+    try{
+      const system=buildSystem(sChar,sentSet,{spontaneous:true});
+      const recentCtx=messages.slice(-6);
+      const prompt=withMedia
+        ?"[Sistema interno: envía un mensaje espontáneo. Puedes incluir archivo de galería si tiene sentido.]"
+        :"[Sistema interno: envía un mensaje espontáneo corto, como si te acordaras del usuario. Solo texto.]";
+      const fakeHistory=[...recentCtx,{id:"_sp",role:"user",content:{type:"text",text:prompt}}];
+      const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system,messages:fakeHistory,maxTokens:200});
+      if(destroyed)return;
+      const{parts,picked,viewMode}=parseReply(reply,sChar.media||[]);
+      if((!parts.length||!parts[0])&&!picked){setLoading(false);resetSpontTimer();return;}
+      let final=messages;
+      for(let i=0;i<parts.length;i++){
+        const partText=parts[i];
+        const isLast=i===parts.length-1;
+        await delay(Math.min(typingMs(partText),2000));
+        if(destroyed)return;
+        if(i>0) setLoading(true,"escribiendo…");
+        const pickedIdx=(isLast&&picked)?(sChar.media||[]).indexOf(picked):-1;
+        const ac=(isLast&&picked)
+          ?{type:"media",mediaType:picked.type,url:picked.url,text:partText,viewMode,description:picked.description,galleryIdx:pickedIdx}
+          :{type:"text",text:partText};
+        const botMsg={id:uid(),role:"assistant",content:ac,ts:Date.now()};
+        final=[...final,botMsg];
+        saveMsgs(final);
+        if(isLast) setLoading(false);
+        // Bump unread count if page hidden
+        if(document.hidden){
+          const nu=getUnread();nu[char.id]=(nu[char.id]||0)+1;setUnread(nu);
+        }
+        msgArea.appendChild(renderBubble(botMsg));
+        msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+        if(!isLast) await delay(400+Math.random()*700);
+      }
+      resetSpontTimer();
+      resetFollowUpTimer();
+    }catch{if(!destroyed){setLoading(false);resetSpontTimer();}}
+  }
+
+  function saveMsgs(m){messages=[...m];saveChats({...state.chats,[char.id]:m})}
+
+  // Status bar
+  const sdot=el("span",{style:{width:"8px",height:"8px",borderRadius:"50%",background:C.green,display:"inline-block",flexShrink:"0"}});
+  const slbl=el("span",{style:{fontSize:"11px",color:C.muted,marginLeft:"4px"}},"Activo ahora");
+  let statusAnim=null;
+  function setStatus(t,typing=false){
+    if(typing){
+      slbl.style.color="#a78bfa";slbl.textContent=t;
+      sdot.style.background="#a78bfa";
+    } else {
+      slbl.style.color=C.muted;slbl.textContent=t;
+      sdot.style.background=C.green;
+    }
+  }
+
+  const msgArea=el("div",{style:{
+    flex:"1",overflowY:"auto",padding:"8px 12px 4px",
+    display:"flex",flexDirection:"column",gap,
+    backgroundImage:"none",
+  }});
+  const bref=el("div");
+
+  // ── Lightbox ─────────────────────────────────────────────
+  const lbRoot=document.getElementById("lb-root");
+  lbRoot.innerHTML="";
+  const lb=el("div",{class:"lb-overlay"});
+  const lbM=el("div",{style:{maxWidth:"100%",maxHeight:"80vh",display:"flex",alignItems:"center",justifyContent:"center"}});
+  const lbH=el("div",{style:{marginTop:"12px",fontSize:"12px",color:"#aaa",display:"none"}},"👁 Solo se puede ver una vez");
+  const lbX=el("button",{style:{position:"absolute",top:"16px",right:"16px",background:"rgba(255,255,255,.1)",border:"none",borderRadius:"50%",width:"40px",height:"40px",color:"#fff",fontSize:"20px"}},"✕");
+  lb.appendChild(lbM);lb.appendChild(lbH);lb.appendChild(lbX);
+  lbRoot.appendChild(lb);
+  let lbCb=null;
+  function openLb(c,onClose=null){
+    lbM.innerHTML="";
+    if(c.mediaType==="video")lbM.appendChild(el("video",{src:c.url,controls:"",autoplay:"",style:{maxWidth:"100%",maxHeight:"75vh",borderRadius:"10px"}}));
+    else lbM.appendChild(el("img",{src:c.url,style:{maxWidth:"100%",maxHeight:"75vh",borderRadius:"10px",objectFit:"contain"}}));
+    lbH.style.display=c.viewMode==="once"?"block":"none";
+    lbCb=onClose;lb.style.display="flex";
+  }
+  function closeLb(){lb.style.display="none";lbM.innerHTML="";if(lbCb){lbCb();lbCb=null;}}
+  lbX.addEventListener("click",closeLb);
+  lb.addEventListener("click",e=>{if(e.target===lb)closeLb()});
+
+  // ── Typing indicator (IG style) ───────────────────────────
+  const typRow=el("div",{style:{display:"none",gap:"8px",alignItems:"flex-end",paddingLeft:"2px",padding:"4px 0"}},
+    IGAvatar(char,28),
+    el("div",{style:{
+      background:C.s3, borderRadius:"18px 18px 18px 4px",
+      padding:"12px 16px", display:"flex", gap:"5px", alignItems:"center",
+    }},
+      el("span",{class:"td1",style:{width:"7px",height:"7px",borderRadius:"50%",background:"#555",display:"inline-block"}}),
+      el("span",{class:"td2",style:{width:"7px",height:"7px",borderRadius:"50%",background:"#555",display:"inline-block"}}),
+      el("span",{class:"td3",style:{width:"7px",height:"7px",borderRadius:"50%",background:"#555",display:"inline-block"}})
+    )
+  );
+
+  function setLoading(v,wt=""){
+    if(destroyed)return;
+    loading=v;typRow.style.display=v?"flex":"none";
+    if(v){setStatus(wt||"escribiendo…",true);msgArea.appendChild(typRow);}
+    else setStatus("Activo ahora",false);
+    msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+  }
+
+  // ── Reaction picker ──────────────────────────────────────
+  let reactionPickerFor=null;
+  let reactionPickerEl=null;
+  function closeReactionPicker(){
+    if(reactionPickerEl){reactionPickerEl.remove();reactionPickerEl=null;}
+    reactionPickerFor=null;
+  }
+  function openReactionPicker(msgId, anchorEl){
+    closeReactionPicker();
+    reactionPickerFor=msgId;
+    const picker=el("div",{style:{
+      position:"absolute", zIndex:"50",
+      background:"#1c1c1c", border:`1px solid ${C.border}`,
+      borderRadius:"24px", padding:"8px 10px",
+      display:"flex", gap:"6px",
+      boxShadow:"0 4px 20px rgba(0,0,0,.8)",
+    }});
+    for(const emoji of REACTIONS){
+      const b=el("button",{style:{
+        background:"none",border:"none",fontSize:"22px",cursor:"pointer",
+        padding:"2px 4px",borderRadius:"50%",transition:"transform .1s",
+      }},emoji);
+      b.addEventListener("click",e=>{
+        e.stopPropagation();
+        const r={...reactions};
+        if(r[msgId]===emoji) delete r[msgId];
+        else r[msgId]=emoji;
+        reactions=r;setReactions(r);
+        closeReactionPicker();
+        rebuildMsgs();
+      });
+      b.addEventListener("mouseenter",()=>b.style.transform="scale(1.3)");
+      b.addEventListener("mouseleave",()=>b.style.transform="scale(1)");
+      picker.appendChild(b);
+    }
+    reactionPickerEl=picker;
+    // position relative to msgArea
+    const rect=anchorEl.getBoundingClientRect();
+    const areaRect=msgArea.getBoundingClientRect();
+    picker.style.top=(rect.top-areaRect.top-50)+"px";
+    picker.style.left=Math.max(4,rect.left-areaRect.left-20)+"px";
+    picker.style.position="absolute";
+    msgArea.style.position="relative";
+    msgArea.appendChild(picker);
+    setTimeout(()=>document.addEventListener("click",closeReactionPicker,{once:true}),10);
+  }
+
+  // ── Voice message bubble (synthetic) ─────────────────────
+  function makeVoiceBubble(durationSec, isUser){
+    const bars=16;
+    const waveWrap=el("div",{style:{
+      display:"flex",alignItems:"center",gap:"3px",height:"28px",
+    }});
+    for(let i=0;i<bars;i++){
+      const h=8+Math.floor(Math.random()*18);
+      const b=el("div",{style:{
+        width:"3px", height:h+"px", borderRadius:"2px",
+        background: isUser?"rgba(255,255,255,.7)":"#555",
+        transition:"background .2s",
+      }});
+      waveWrap.appendChild(b);
+    }
+    const dur=el("span",{style:{fontSize:"12px",color:isUser?"rgba(255,255,255,.7)":"#666",marginLeft:"6px",flexShrink:"0"}},
+      durationSec<60?durationSec+"s":Math.floor(durationSec/60)+"m"+String(durationSec%60).padStart(2,"0")+"s");
+    const playBtn=el("button",{style:{
+      background:"none",border:"none",fontSize:"18px",cursor:"pointer",padding:"0 4px",flexShrink:"0",
+      color:isUser?"#fff":"#999",
+    }},"▶");
+    let playing=false;
+    playBtn.addEventListener("click",()=>{
+      playing=!playing;
+      playBtn.textContent=playing?"⏸":"▶";
+      // Animate bars while "playing"
+      if(playing){
+        let i=0;
+        const anim=setInterval(()=>{
+          if(!playing){clearInterval(anim);return;}
+          const bars2=waveWrap.querySelectorAll("div");
+          bars2.forEach((b,bi)=>{b.style.background=bi===i%bars?"#a78bfa":(isUser?"rgba(255,255,255,.7)":"#555")});
+          i++;
+          if(i>bars*3){clearInterval(anim);playing=false;playBtn.textContent="▶";bars2.forEach(b=>b.style.background=isUser?"rgba(255,255,255,.7)":"#555");}
+        },100);
+      }
+    });
+    return el("div",{style:{display:"flex",alignItems:"center",gap:"6px",minWidth:"140px"}},playBtn,waveWrap,dur);
+  }
+
+  // ── Render a single bubble (Instagram DM style) ───────────
+  function renderBubble(msg){
+    const isUser=msg.role==="user";
+    const c=msg.content;
+    const isMedia=c?.type==="media"&&c.url;
+    const isVoice=c?.type==="voice";
+    const wasViewed=!!viewed[msg.id];
+    const reaction=reactions[msg.id];
+
+    const row=el("div",{class:"msg-in",style:{
+      display:"flex",gap:"6px",
+      alignItems:"flex-end",
+      flexDirection:isUser?"row-reverse":"row",
+      margin:"1px 0",
+      position:"relative",
+    }});
+
+    // Avatar only for bot, only on last consecutive message
+    if(!isUser) row.appendChild(IGAvatar(char,28));
+
+    const inner=el("div",{style:{
+      maxWidth:"72%",display:"flex",flexDirection:"column",
+      gap:"2px",alignItems:isUser?"flex-end":"flex-start",
+      position:"relative",
+    }});
+
+    // Date separator (first msg of day)
+    // handled at rebuild level
+
+    if(isMedia){
+      if(c.viewMode==="once"&&wasViewed){
+        inner.appendChild(el("div",{style:{
+          background:C.s2,color:C.muted,borderRadius:"14px",
+          padding:"9px 14px",fontSize:"13px",fontStyle:"italic",
+        }},"👁 Foto vista — ya no disponible"));
+      } else {
+        const wrap=el("div",{style:{
+          position:"relative",display:"inline-block",cursor:"pointer",
+          borderRadius:"18px",overflow:"hidden",
+          maxWidth:"210px",
+          boxShadow:"0 2px 16px rgba(0,0,0,.6)",
+        }});
+        if(c.mediaType==="video")wrap.appendChild(el("video",{src:c.url,style:{width:"100%",display:"block"},controls:""}));
+        else wrap.appendChild(el("img",{src:c.url,alt:"",style:{width:"100%",display:"block"}}));
+        if(c.viewMode==="once")wrap.appendChild(el("div",{style:{position:"absolute",bottom:"6px",right:"8px",background:"rgba(0,0,0,.75)",borderRadius:"9px",padding:"2px 8px",fontSize:"11px",color:"#fff"}},"👁 1×"));
+        wrap.addEventListener("click",()=>{
+          if(c.viewMode==="once"&&!wasViewed)openLb(c,()=>{viewed={...viewed,[msg.id]:true};rebuildMsgs();});
+          else openLb(c);
+        });
+        inner.appendChild(wrap);
+      }
+    }
+
+    if(isVoice){
+      const vcWrap=el("div",{style:{
+        background:isUser?userColor:C.s3,
+        borderRadius:isUser?"18px 18px 4px 18px":"18px 18px 18px 4px",
+        padding:"10px 13px",
+      }});
+      vcWrap.appendChild(makeVoiceBubble(c.duration||3,isUser));
+      inner.appendChild(vcWrap);
+    }
+
+    if(c?.text&&c.text.trim()){
+      const isJealous = !isUser && !!c._jealousy;
+      const isUserJealous = !isUser && !!c._userJealous;
+      if(isJealous){
+        // Small label above the bubble
+        const jLabel=el("div",{style:{
+          fontSize:"10px",fontWeight:"700",letterSpacing:".6px",
+          color:"#22c55e",textTransform:"uppercase",
+          marginBottom:"3px",paddingLeft:"2px",opacity:".85",
+        }},"💚 celos");
+        inner.appendChild(jLabel);
+      }
+      if(isUserJealous){
+        const ujLabel=el("div",{style:{
+          fontSize:"10px",fontWeight:"700",letterSpacing:".6px",
+          color:"#f59e0b",textTransform:"uppercase",
+          marginBottom:"3px",paddingLeft:"2px",opacity:".85",
+        }},"😒 algo celoso/a");
+        inner.appendChild(ujLabel);
+      }
+      const bubble=el("div",{style:{
+        background:isUser?userColor: isJealous?"#122112":isUserJealous?"#211a0c":C.s3,
+        color:C.text,
+        borderRadius:isUser?"18px 18px 4px 18px":"18px 18px 18px 4px",
+        padding:"10px 14px",
+        fontSize:"15px",lineHeight:"1.52",
+        wordBreak:"break-word",whiteSpace:"pre-wrap",
+        maxWidth:"100%",
+        boxShadow:isUser?"none": isJealous?"0 0 0 1.5px #22c55e66,0 1px 4px rgba(0,0,0,.4)":isUserJealous?"0 0 0 1.5px #f59e0b66,0 1px 4px rgba(0,0,0,.4)":"0 1px 4px rgba(0,0,0,.3)",
+        cursor:"pointer",
+      }},c.text);
+      // Double-tap / long-press → reaction picker
+      let tapTimer=null,taps=0;
+      bubble.addEventListener("click",e=>{
+        taps++;
+        if(taps===1){tapTimer=setTimeout(()=>{taps=0;},300);}
+        if(taps>=2){clearTimeout(tapTimer);taps=0;openReactionPicker(msg.id,bubble);}
+      });
+      inner.appendChild(bubble);
+    }
+
+    // Reaction badge
+    if(reaction){
+      const rb=el("div",{style:{
+        fontSize:"16px",
+        background:"#1c1c1c",border:`1px solid ${C.border}`,
+        borderRadius:"20px",padding:"2px 6px",
+        alignSelf:isUser?"flex-end":"flex-start",
+        marginTop:"-4px",cursor:"pointer",
+      }},reaction);
+      rb.addEventListener("click",()=>{
+        const r={...reactions};delete r[msg.id];reactions=r;setReactions(r);rebuildMsgs();
+      });
+      inner.appendChild(rb);
+    }
+
+    // Timestamp + read receipt
+    if(msg.ts){
+      const d=new Date(msg.ts);
+      const hh=d.getHours().toString().padStart(2,"0"),mm=d.getMinutes().toString().padStart(2,"0");
+      const readBy=getReadBy();
+      const isRead=isUser&&readBy[msg.id];
+      inner.appendChild(el("div",{style:{
+        display:"flex",alignItems:"center",gap:"3px",
+        justifyContent:isUser?"flex-end":"flex-start",
+      }},
+        el("span",{style:{fontSize:"10px",color:C.muted2}},hh+":"+mm),
+        isUser ? el("span",{style:{fontSize:"11px",color:isRead?"#a78bfa":C.muted2}},isRead?"✓✓":"✓") : null
+      ));
+    }
+
+    row.appendChild(inner);
+    return row;
+  }
+
+  // ── Date separators ──────────────────────────────────────
+  function dateSep(ts){
+    const d=new Date(ts);
+    const now=new Date();
+    let label;
+    if(d.toDateString()===now.toDateString()) label="Hoy";
+    else if(d.toDateString()===new Date(now-86400000).toDateString()) label="Ayer";
+    else label=d.getDate()+"/"+(d.getMonth()+1)+"/"+d.getFullYear();
+    return el("div",{style:{
+      display:"flex",alignItems:"center",justifyContent:"center",
+      margin:"8px 0 4px",
+    }},
+      el("span",{style:{
+        fontSize:"11px",color:C.muted,
+        background:C.s2,borderRadius:"10px",
+        padding:"3px 10px",
+      }},label)
+    );
+  }
+
+  function rebuildMsgs(){
+    if(destroyed)return;
+    msgArea.innerHTML="";
+    let lastDate="";
+    for(const m of messages){
+      if(m.ts){
+        const d=new Date(m.ts).toDateString();
+        if(d!==lastDate){msgArea.appendChild(dateSep(m.ts));lastDate=d;}
+      }
+      msgArea.appendChild(renderBubble(m));
+    }
+    if(loading)msgArea.appendChild(typRow);
+    msgArea.appendChild(bref);
+    setTimeout(()=>bref.scrollIntoView({behavior:"smooth"}),50);
+  }
+
+  // ── Mark messages as read ─────────────────────────────────
+  function markRead(){
+    const rb=getReadBy();
+    let changed=false;
+    for(const m of messages){
+      if(m.role==="user"&&!rb[m.id]){rb[m.id]=true;changed=true;}
+    }
+    if(changed)setReadBy(rb);
+  }
+
+  // ── Send content (main engine) ────────────────────────────
+  async function sendContent(userContent){
+    if(loading||destroyed)return;
+    resetSpontTimer();
+    if(followUpTimer){clearTimeout(followUpTimer);followUpTimer=null;}
+    if(userContent?.type==="text"){
+      nudgeMoodFromText(char, userContent.text);
+      applyRelationshipImpact(char, userContent.text, messages);
+      checkUserMentionJealousy(char, userContent.text);
+    }
+    const uMsg={id:uid(),role:"user",content:userContent,ts:Date.now()};
+    const newMsgs=[...messages,uMsg];
+    saveMsgs(newMsgs);
+    if(msgArea.lastChild===bref)msgArea.insertBefore(renderBubble(uMsg),bref);
+    else msgArea.appendChild(renderBubble(uMsg));
+    inputEl.value="";inputEl.style.height="auto";
+    sendBtn.style.background=C.s3;
+    setLoading(true,"visto ✓");
+
+    // Mark user's messages as seen by bot after short delay
+    setTimeout(()=>{
+      if(destroyed)return;
+      const rb=getReadBy();rb[uMsg.id]=true;setReadBy(rb);
+      rebuildMsgs();
+    },800+Math.random()*1200);
+
+    try{
+      await delay(350+Math.random()*300);
+      if(destroyed)return;
+      setStatus("escribiendo…",true);
+
+      const pid=sChar.providerId,mid=sChar.modelId,apiKey=getKey(pid);
+      const sentSet=getSentIndices(newMsgs);
+      const ctxText=newMsgs.slice(-4).map(m=>m.content?.text||"").join(" ");
+      const preMatch=scoredGalleryMatch(sChar.media||[],sentSet,ctxText);
+      const preHint=preMatch!=null?`\n[Sugerencia del sistema: el archivo #${preMatch.idx} parece relevante para el contexto actual.]`:"";
+      const system=buildSystem(sChar,sentSet,{isCF:isCloseFriend(char.id)})+preHint;
+      const reply=await callAPI({providerId:pid,apiKey,modelId:mid,system,messages:newMsgs,maxTokens:900});
+      if(destroyed)return;
+      const{parts,picked,viewMode}=parseReply(reply,sChar.media||[]);
+
+      let final=newMsgs;
+      const wasUserJealousTurn = isUserJealousActive(char.id);
+      for(let i=0;i<parts.length;i++){
+        const partText=parts[i];
+        const isLast=i===parts.length-1;
+        await delay(Math.min(typingMs(partText),2600));
+        if(destroyed)return;
+        if(i>0) setLoading(true,"escribiendo…");
+
+        const pickedIdx=(isLast&&picked)?(sChar.media||[]).indexOf(picked):-1;
+        const ac=(isLast&&picked)
+          ?{type:"media",mediaType:picked.type,url:picked.url,text:partText,viewMode,description:picked.description,galleryIdx:pickedIdx,_userJealous:i===0&&wasUserJealousTurn}
+          :{type:"text",text:partText,_userJealous:i===0&&wasUserJealousTurn};
+        const botMsg={id:uid(),role:"assistant",content:ac,ts:Date.now()};
+        final=[...final,botMsg];
+        messages=final;
+        saveMsgs(final);
+        if(isLast) setLoading(false);
+        msgArea.appendChild(renderBubble(botMsg));
+        msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+
+        if(!isLast) await delay(400+Math.random()*700);
+      }
+
+      resetSpontTimer();
+      resetFollowUpTimer();
+    }catch(e){
+      if(destroyed)return;
+      setLoading(false);
+      const em={id:uid(),role:"assistant",content:{type:"text",text:"⚠️ "+e.message},ts:Date.now()};
+      const errFinal=[...newMsgs,em];
+      messages=errFinal;
+      saveMsgs(errFinal);
+      msgArea.appendChild(renderBubble(em));msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+    }
+  }
+
+  // ── Opener ───────────────────────────────────────────────
+  if(!messages.length){
+    setTimeout(async()=>{
+      if(destroyed)return;
+      setLoading(true,"escribiendo…");
+      try{
+        let text=sChar.opener;
+        if(!text){
+          const r=await callAPI({
+            providerId:sPid,apiKey:getKey(sPid),modelId:sMid,
+            system:buildSystem(sChar,new Set()),
+            messages:[{id:"_init",role:"user",content:{type:"text",text:"[Sistema: saluda de forma natural y breve como "+sChar.name+". Máximo 1-2 frases cortas.]"}}],
+            maxTokens:120,
+          });
+          if(destroyed)return;
+          text=parseReply(r,[]).text;
+        }
+        await delay(600+Math.random()*400);
+        if(destroyed)return;
+        const m={id:uid(),role:"assistant",content:{type:"text",text},ts:Date.now()};
+        saveMsgs([m]);setLoading(false);
+        msgArea.appendChild(renderBubble(m));msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+        resetSpontTimer();
+        resetFollowUpTimer();
+      }catch(e){
+        if(destroyed)return;
+        const m={id:uid(),role:"assistant",content:{type:"text",text:"Hola 👋"},ts:Date.now()};
+        saveMsgs([m]);setLoading(false);
+        msgArea.appendChild(renderBubble(m));msgArea.appendChild(bref);bref.scrollIntoView({behavior:"smooth"});
+        resetSpontTimer();
+        resetFollowUpTimer();
+      }
+    },350);
+  }else{
+    rebuildMsgs();
+    markRead();
+    resetSpontTimer();
+    resetFollowUpTimer();
+  }
+
+  // ── Input area ───────────────────────────────────────────
+  const fileRef=el("input",{type:"file",accept:"image/*,video/*",style:{display:"none"}});
+  fileRef.addEventListener("change",async e=>{
+    const f=e.target.files[0];if(!f)return;
+    const isVid=f.type.startsWith("video/");
+    let url=await readFile(f);
+    if(!isVid)url=await resizeImg(url);
+    e.target.value="";
+    sendContent({type:"media",mediaType:isVid?"video":"image",url,text:"",description:isVid?"video adjunto":"imagen adjunta"});
+  });
+
+  const inputEl=el("textarea",{placeholder:"Mensaje…",rows:"1",style:{
+    flex:"1",background:C.s2,
+    border:`1px solid ${C.border}`,
+    borderRadius:"22px",padding:"10px 15px",
+    color:C.text,fontSize:"15px",
+    outline:"none",lineHeight:"1.48",
+    overflow:"hidden",maxHeight:"120px",minWidth:"0",
+  }});
+  inputEl.addEventListener("input",()=>{
+    inputEl.style.height="auto";
+    inputEl.style.height=Math.min(inputEl.scrollHeight,120)+"px";
+    const hasText=inputEl.value.trim()&&!loading;
+    sendBtn.style.background=hasText?userColor:C.s3;
+    sendBtn.style.backgroundImage=hasText&&igMode?IG_GRAD:"none";
+  });
+  inputEl.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();doSend();}});
+
+  // IG send button with gradient
+  const sendBtn=el("button",{style:{
+    background:C.s3,border:"none",borderRadius:"50%",
+    width:"42px",height:"42px",flexShrink:"0",
+    transition:"background .15s",
+    display:"flex",alignItems:"center",justifyContent:"center",
+  }});
+  sendBtn.innerHTML=`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`;
+  function doSend(){const t=inputEl.value.trim();if(t&&!loading)sendContent({type:"text",text:t});}
+  sendBtn.addEventListener("click",doSend);
+
+  // Attachment + emoji-like buttons
+  const attBtn=el("button",{style:{
+    background:C.s2,border:"none",borderRadius:"50%",
+    width:"42px",height:"42px",flexShrink:"0",fontSize:"19px",
+    display:"flex",alignItems:"center",justifyContent:"center",
+    transition:"background .12s",
+  }},"📎");
+  attBtn.addEventListener("click",()=>fileRef.click());
+  attBtn.addEventListener("mouseenter",()=>attBtn.style.background=C.s3);
+  attBtn.addEventListener("mouseleave",()=>attBtn.style.background=C.s2);
+
+  // Heart quick reaction button
+  const heartBtn=el("button",{style:{
+    background:"none",border:"none",fontSize:"24px",
+    padding:"0 2px",flexShrink:"0",cursor:"pointer",
+    transition:"transform .1s",color:"#ed4956",
+  }},"♥");
+  heartBtn.addEventListener("click",()=>{
+    heartBtn.style.transform="scale(1.4)";
+    setTimeout(()=>heartBtn.style.transform="scale(1)",200);
+    sendContent({type:"text",text:"❤️"});
+  });
+
+  // ── Model picker ─────────────────────────────────────────
+  const mpPanel=el("div",{style:{display:"none",position:"absolute",top:"62px",left:"12px",right:"12px",background:"#111",borderRadius:"13px",overflow:"hidden",zIndex:"31",boxShadow:"0 8px 32px rgba(0,0,0,.9)",maxHeight:"65vh",overflowY:"auto",border:`1px solid ${C.border}`}});
+  const mbEl=el("div",{style:{cursor:"pointer",userSelect:"none"}});
+  function refreshMBadge(){
+    mbEl.innerHTML="";
+    const p=PROVIDERS[sPid];const m=p.models.find(x=>x.id===sMid);
+    mbEl.appendChild(el("div",{style:{background:p.color+"22",color:p.color,border:`1px solid ${p.color}44`,borderRadius:"8px",padding:"2px 8px",fontSize:"10px",fontWeight:"600"}},p.emoji+" "+(m?.label||sMid.split("-").slice(0,2).join(" "))));
+  }
+  refreshMBadge();
+  mbEl.addEventListener("click",e=>{
+    e.stopPropagation();mpOpen=!mpOpen;
+    if(mpOpen){buildMPicker();mpPanel.style.display="block";}
+    else mpPanel.style.display="none";
+  });
+
+  function buildMPicker(){
+    mpPanel.innerHTML="";
+    mpPanel.appendChild(el("div",{style:{padding:"11px 15px 8px",borderBottom:`1px solid ${C.border}`}},
+      el("div",{style:{fontWeight:"700",fontSize:"13px",color:C.text}},"Cambiar modelo"),
+      el("div",{style:{fontSize:"10px",color:C.muted,marginTop:"2px"}},"Afecta solo esta sesión")
+    ));
+    for(const[pid,p]of Object.entries(PROVIDERS)){
+      const ak=getKey(pid);
+      mpPanel.appendChild(el("div",{style:{padding:"7px 15px 3px",fontSize:"10px",color:p.color,fontWeight:"700",letterSpacing:".5px"}},p.emoji+" "+p.name.toUpperCase()));
+      if(!ak&&pid!=="claude"){mpPanel.appendChild(el("div",{style:{padding:"4px 15px 8px",fontSize:"11px",color:C.muted}},"Sin API key — agrega en ⚙️"));continue;}
+      for(const m of p.models){
+        const isAct=sPid===pid&&sMid===m.id;
+        const r=el("button",{style:{display:"flex",alignItems:"center",gap:"10px",width:"100%",padding:"9px 15px",background:isAct?p.color+"18":"transparent",border:"none",cursor:"pointer",transition:"background .1s",textAlign:"left"}},
+          el("div",{style:{flex:"1"}},el("div",{style:{fontWeight:"600",fontSize:"13px",color:C.text}},m.label),el("div",{style:{fontSize:"11px",color:C.muted}},m.desc)),
+          badge(m.badge,p.color),
+          isAct?el("span",{style:{color:p.color,fontSize:"14px"}},"✓"):el("span")
+        );
+        r.addEventListener("mouseenter",()=>r.style.background=p.color+"18");
+        r.addEventListener("mouseleave",()=>r.style.background=isAct?p.color+"18":"transparent");
+        r.addEventListener("click",()=>{sPid=pid;sMid=m.id;sChar={...sChar,providerId:pid,modelId:m.id};mpPanel.style.display="none";mpOpen=false;refreshMBadge();});
+        mpPanel.appendChild(r);
+      }
+    }
+  }
+
+  // ── Context menu ─────────────────────────────────────────
+  const menuPanel=el("div",{style:{display:"none",position:"absolute",top:"62px",right:"12px",background:"#111",borderRadius:"12px",overflow:"hidden",zIndex:"30",minWidth:"190px",boxShadow:"0 8px 32px rgba(0,0,0,.9)",border:`1px solid ${C.border}`}});
+  function mItem(t,col,cb){
+    const b=el("button",{style:{display:"block",width:"100%",padding:"13px 17px",background:"none",border:"none",color:col||C.text,textAlign:"left",fontSize:"15px",fontFamily:"inherit",transition:"background .1s"}},t);
+    b.addEventListener("mouseenter",()=>b.style.background=C.s3);b.addEventListener("mouseleave",()=>b.style.background="none");
+    b.addEventListener("click",()=>{menuPanel.style.display="none";menuOpen=false;cb()});return b;
+  }
+  menuPanel.appendChild(mItem("👤 Ver perfil",null,()=>{nav("profile",char)}));
+  menuPanel.appendChild(mItem("✏️ Editar personaje",null,()=>{state.editing=char;nav("form")}));
+  menuPanel.appendChild(mItem("💞 Ver relación",null,()=>{nav("relpanel",char)}));
+  menuPanel.appendChild(mItem("🔄 Reiniciar chat",C.amber,()=>{
+    // Borra el historial y vuelve a abrir el chat desde cero.
+    // Pasar por nav() asegura que runTeardown() limpie timers,
+    // listeners de document y closures de ESTA instancia antes
+    // de crear una nueva — evita que queden "chats fantasma".
+    saveChats({...state.chats,[char.id]:[]});
+    nav("chat",char);
+  }));
+  menuPanel.appendChild(mItem("❌ Eliminar personaje",C.red,()=>{
+    saveChars(state.chars.filter(c=>c.id!==char.id));
+    const nc={...state.chats};delete nc[char.id];saveChats(nc);
+    setNotes(getNotes().filter(n=>n.charId!==char.id));
+    const nm={...getNotesMeta()};delete nm[char.id];setNotesMeta(nm);
+    nav("home");
+  }));
+
+  const moreBtn=el("button",{style:{background:"none",border:"none",color:C.muted,fontSize:"22px",padding:"0 4px",fontFamily:"inherit"}},"⋮");
+  moreBtn.addEventListener("click",e=>{e.stopPropagation();menuOpen=!menuOpen;menuPanel.style.display=menuOpen?"block":"none";if(menuOpen){mpOpen=false;mpPanel.style.display="none";}});
+
+  const docClickHandler=(e)=>{
+    if(menuOpen&&!menuPanel.contains(e.target)&&e.target!==moreBtn){menuOpen=false;menuPanel.style.display="none";}
+    if(mpOpen&&!mpPanel.contains(e.target)&&!mbEl.contains(e.target)){mpOpen=false;mpPanel.style.display="none";}
+  };
+  document.addEventListener("click",docClickHandler);
+
+  // ── IG-style header ───────────────────────────────────────
+  const hdr=el("div",{style:{
+    display:"flex",alignItems:"center",gap:"10px",padding:"10px 14px",
+    borderBottom:`1px solid ${C.border}`,background:C.bg,
+    flexShrink:"0",position:"relative",zIndex:"10",
+  }},
+    el("button",{
+      style:{background:"none",border:"none",color:C.text,fontSize:"22px",padding:"0 4px",cursor:"pointer"},
+      onClick:()=>nav("home")
+    },"←"),
+    (()=>{
+      const charStories = getCharStories(char.id);
+      const seenSt = getSeenStories();
+      const hasUnseen = charStories.some(s=>!seenSt[s.id]);
+      if(charStories.length){
+        const ringWrap = document.createElement("div");
+        const isCF = charStories.some(s=>s.isCF);
+        ringWrap.style.cssText = `border-radius:50%;padding:2.5px;cursor:pointer;flex-shrink:0;width:46px;height:46px;display:flex;align-items:center;justify-content:center;background:${hasUnseen?(isCF?"linear-gradient(135deg,#22c55e,#16a34a)":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)"):"#333"}`;
+        const avInner = document.createElement("div");
+        avInner.style.cssText = "border-radius:50%;border:2px solid #000;overflow:hidden;width:38px;height:38px";
+        const avEl = IGAvatar(char,34,false);
+        avInner.appendChild(avEl);
+        ringWrap.appendChild(avInner);
+        ringWrap.addEventListener("click",()=>openStoryViewer([char],0));
+        return ringWrap;
+      }
+      return (()=>{const av=IGAvatar(char,38,true);av.style.cursor="pointer";av.addEventListener("click",()=>nav("profile",char));return av;})();
+    })(),
+    el("div",{style:{flex:"1",minWidth:"0",cursor:"pointer"},
+      onClick:()=>nav("profile",char)},
+      el("div",{style:{fontWeight:"600",fontSize:"15px",color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"flex",alignItems:"center",gap:"6px"}},
+        char.name,
+        isCloseFriend(char.id) ? (()=>{const b=document.createElement("span");b.className="cf-badge";b.textContent="★ CF";return b;})() : null
+      ),
+      el("div",{style:{display:"flex",alignItems:"center",gap:"5px",marginTop:"1px"}},
+        sdot,slbl,
+        el("span",{style:{color:C.muted,fontSize:"11px",margin:"0 4px"}},"|"),
+        mbEl
+      )
+    ),
+    // Video call icon (decorative, IG style)
+    el("button",{style:{background:"none",border:"none",fontSize:"22px",color:C.muted,cursor:"default",padding:"0 4px"}},moreBtn.style.color="",
+    ),
+    moreBtn,menuPanel,mpPanel
+  );
+
+  const inputBar=el("div",{style:{
+    padding:"8px 10px",background:C.bg,
+    borderTop:`1px solid ${C.border}`,
+    display:"flex",gap:"6px",alignItems:"flex-end",
+    flexShrink:"0",
+  }},
+    fileRef,attBtn,inputEl,heartBtn,sendBtn
+  );
+
+  // ── Teardown ───────────────────────────────────────────────
+  // Se ejecuta automáticamente cuando render() pasa a otra
+  // pantalla (incluyendo re-abrir este mismo chat tras
+  // "Reiniciar chat"). Marca destroyed=true para que cualquier
+  // timer/promesa pendiente de ESTA instancia se vuelva inerte,
+  // quita el listener global de document y limpia el lightbox.
+  registerTeardown(()=>{
+    destroyed=true;
+    if(spontTimer)clearTimeout(spontTimer);
+    if(followUpTimer)clearTimeout(followUpTimer);
+    document.removeEventListener("click",docClickHandler);
+    closeReactionPicker();
+    lbRoot.innerHTML="";
+    if(window.__activeChatId===char.id){
+      window.__activeChatId=null;
+      window.__activeChatAppend=null;
+    }
+  });
+
+  return Wrap(hdr,msgArea,inputBar);
+}
+
+/* ─── BOOT ────────────────────────────────────────────────── */
+render();
+
+</script>
+</body>
+</html>
